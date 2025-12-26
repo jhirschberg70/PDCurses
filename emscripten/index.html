@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="pdcurses.css" rel="stylesheet" />
+    <script>
+      function documentReady() {
+        return new Promise((resolve, reject) => {
+          if (document.readyState === "complete") {
+            resolve();
+          } else {
+            const timeout = setTimeout(() => {
+              window.removeEventListener("load", listener, true);
+              reject(new Error("document failed to load"));
+            }, 5000);
+
+            window.addEventListener("load", function listener() {
+              this.clearTimeout(timeout);
+              window.removeEventListener("load", listener, true);
+              resolve();
+            }, true);
+          }
+        });
+      }
+      self.Module = {
+        onRuntimeInitialized: (async () => {
+          console.log("emscripten ready")
+          await documentReady();
+          console.log("document ready");
+          console.log("calling main...")
+          Module["callMain"]();
+        }),
+        print: (text) => { console.log(text); },
+        printErr: (text) => { console.error(text); }
+      }
+
+      window.addEventListener("load", () => {
+        window.addEventListener("click", (event) => {
+          if (event.target instanceof HTMLButtonElement) {
+            const script = document.createElement("script");
+            const scriptName = event.target.getAttribute("data-script");
+            script.src = scriptName;
+            document.head.append(script);
+          }
+        });
+      });
+    </script>
+  </head>
+
+  <body>
+    <main>
+      <button data-script="firework.js">firework</button>
+      <button data-script="ozdemo.js">ozdemo</button>
+      <button data-script="rain.js">rain</button>
+      <button data-script="testcurs.js">testcurs</button>
+      <button data-script="worm.js">worm</button>
+      <button data-script="xmas.js">xmas</button>
+    </main>
+  </body>
+
+</html>
