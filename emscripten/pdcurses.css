@@ -31,6 +31,10 @@ html {
   animation-name: blink-text;
 }
 
+.bold {
+  font-weight: 700;;
+}
+
 .cell {
   --background: transparent;
   --color: white;
