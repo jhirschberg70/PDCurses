@@ -19,4 +19,8 @@ I've gotten basic functionality working, though there's much left to do. I'm goi
 
 ### 2025-12-26
 
-I believe I have basic functionality complete. I need to conduct more testing, but it's times to get a baseline checked in.
+I believe I have basic functionality complete. I need to conduct more testing, but it's time to get a baseline checked in.
+
+Added support for increasing `font-weight` when A_BOLD is set for a chtype and SP->termattrs.
+
+Wide character support appears to work if compiling with PDC_WIDE defined. I need to complete more testing.

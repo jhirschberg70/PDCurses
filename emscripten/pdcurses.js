@@ -400,7 +400,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       }
     }
   
-    function setCell(row, column, ch, color, background, blink, underline) {
+    function setCell(row, column, ch, color, background, blink, bold, underline) {
       if (screenBuffer[row][column]) {
         screenBuffer[row][column].style.setProperty("--background", `${colorMap.get(background)}`);
         screenBuffer[row][column].style.setProperty("--color", `${colorMap.get(color)}`);
@@ -411,6 +411,12 @@ if (typeof window.PDCurses === ("undefined" || null)) {
           screenBuffer[row][column].classList.add("blink-text");
         } else {
           screenBuffer[row][column].classList.remove("blink-text");
+        }
+
+        if (bold) {
+          screenBuffer[row][column].classList.add("bold");
+        } else {
+          screenBuffer[row][column].classList.remove("bold");
         }
       } else {
         console.error(`error: tried to access row ${row} column ${column}`);
