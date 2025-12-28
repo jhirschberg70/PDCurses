@@ -24,7 +24,10 @@ ifeq ($(DEBUG),Y)
 else
 	CFLAGS  = -O3 -Wall
 	LDFLAGS	= $(LIBCURSES) -O3
-	
+endif
+
+ifeq ($(WIDE), Y)
+	CFLAGS += -DPDC_WIDE
 endif
 
 ARFLAGS = rcv
@@ -34,7 +37,7 @@ LINK		= $(CC)
 LIBCURSES	= libpdcurses.a
 PDCURSES_JS = pdcurses.js
 
-DEMOS			= firework.js ozdemo.js rain.js testcurs.js worm.js xmas.js
+DEMOS			= firework.js ozdemo.js rain.js testcurs.js unicode.js worm.js xmas.js
 
 .PHONY: all libs clean demos
 
@@ -74,6 +77,9 @@ rain.js: ../demos/rain.c $(PDCURSES_JS)
 	$(BUILD) -o $@ $< $(DEMO_LDFLAGS)
 
 testcurs.js: ../demos/testcurs.c $(PDCURSES_JS)
+	$(BUILD) -o $@ $< $(DEMO_LDFLAGS)
+
+unicode.js: ../demos/unicode.c $(PDCURSES_JS)
 	$(BUILD) -o $@ $< $(DEMO_LDFLAGS)
 
 worm.js: ../demos/worm.c $(PDCURSES_JS)
