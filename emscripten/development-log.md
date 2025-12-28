@@ -10,6 +10,7 @@
 - [ ] Understand resize test in testcurs.c
 - [ ] Look at timing differences in xmas.c and ozdemo.c vs SDL
 - [ ] Update emscripten/README
+- [ ] Fix cursor issues seen in testcurs when opening and then closing developer tools
 
 
 ### 2025-12-15
@@ -24,3 +25,8 @@ I believe I have basic functionality complete. I need to conduct more testing, b
 Added support for increasing `font-weight` when A_BOLD is set for a chtype and SP->termattrs.
 
 Wide character support appears to work if compiling with PDC_WIDE defined. I need to complete more testing.
+
+
+### 2025-12-28
+
+Wide characters that are actually greater than 1ch in width are truncated. If I change the width of `.cell` to be `max-content`, the full character is displayed. There are issues with the cursor, however, which need to be resolved. Additionally, if I open developer tools running testcurs (which causes a resize) and then close the developer tools, the cursor changes from a block to an underline. I'm not sure how this is even possible, as both the normal and high-visibiltiy cursors are block. I'll have to investigate.
