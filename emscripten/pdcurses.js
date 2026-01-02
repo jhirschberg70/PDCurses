@@ -151,7 +151,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     KEY_MAP.set("ArrowRight", 0x105);
     KEY_MAP.set("Home",       0x106);
   
-    const colorMap = new Map();
+    const colorMap = [];
     const inputBuffer = [];
     const screenBuffer = [];
   
@@ -248,7 +248,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     }
   
     function mapColor(num, r, g, b) {
-      colorMap.set(num, `rgb(${r}, ${g}, ${b})`);
+      colorMap[num] = `rgb(${r}, ${g}, ${b})`;
     }
   
     function PDC_beep() {
@@ -402,8 +402,8 @@ if (typeof window.PDCurses === ("undefined" || null)) {
   
     function setCell(row, column, ch, color, background, blink, bold, underline) {
       if (screenBuffer[row][column]) {
-        screenBuffer[row][column].style.setProperty("--background", `${colorMap.get(background)}`);
-        screenBuffer[row][column].style.setProperty("--color", `${colorMap.get(color)}`);
+        screenBuffer[row][column].style.setProperty("--background", `${colorMap[background]}`);
+        screenBuffer[row][column].style.setProperty("--color", `${colorMap[color]}`);
         screenBuffer[row][column].style.setProperty("text-decoration", `${ underline ? "underline" : "none" }`);
         screenBuffer[row][column].textContent = String.fromCodePoint(ch);
 
