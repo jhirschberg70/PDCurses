@@ -28,7 +28,7 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
 
     attr_t sysattrs = SP->termattrs;
 
-    chtype ch = 0;
+    chtype codePoint = 0;
     
     short background = COLOR_BLACK;
     short color = COLOR_WHITE;
@@ -38,10 +38,10 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
     bool underline = FALSE;
 
     for (int i = 0; i < len; ++i) {
-        ch = srcp[i] & A_CHARTEXT;
+        codePoint = srcp[i] & A_CHARTEXT;
 
         if (srcp[i] & A_ALTCHARSET && !(srcp[i] & 0xff80))
-            ch = acs_map[ch & 0x7f];
+            codePoint = acs_map[codePoint & 0x7f];
         
         pair_content(PAIR_NUMBER(srcp[i]), &color, &background);
 
@@ -68,6 +68,6 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
             background = temp;
         }
 
-        EM_ASM(PDCurses.setCell($0, $1, $2, $3, $4, $5, $6, $7), lineno, x + i, ch, color, background, blink, bold, underline);
+        EM_ASM(PDCurses.setCell($0, $1, $2, $3, $4, $5, $6, $7), lineno, x + i, codePoint, color, background, blink, bold, underline);
     }
 }
