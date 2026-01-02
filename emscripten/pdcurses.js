@@ -150,11 +150,11 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     KEY_MAP.set("ArrowLeft",  0x104);
     KEY_MAP.set("ArrowRight", 0x105);
     KEY_MAP.set("Home",       0x106);
-  
+
     const colorMap = [];
     const inputBuffer = [];
     const screenBuffer = [];
-  
+
     let beepContext = null;
     let cursorElement = null;;
     let numColumns = null;
@@ -162,11 +162,11 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     let observer = null;
     let screenElement = null;
     let throttleBeep = false;
-  
+
     function createCells(columnIndex, numColumns, rowIndex, numRows) {
       for (let row = rowIndex; row < numRows; ++row) {
         screenBuffer[row] = screenBuffer[row] ?? [];
-  
+
         for (let column = columnIndex; column < numColumns; ++column) {
           if (!screenBuffer[row][column]) {
             const cell = document.createElement("div");
@@ -175,69 +175,69 @@ if (typeof window.PDCurses === ("undefined" || null)) {
             cell.style.setProperty("--row", row + 1);
             screenBuffer[row][column] = cell;
           }
-  
+
           screenElement.append(screenBuffer[row][column]);
         }
       }
     }
-  
+
     function getChDimensions(parent = document.body) {
       const span = document.createElement("span");
-  
+
       span.style.setProperty("position", "fixed");
       span.color = "transparent";
       span.textContent = "0";
-  
+
       parent.append(span);
-  
+
       const chHeight = parseFloat(window.getComputedStyle(parent).lineHeight);
       const chWidth = span.getBoundingClientRect().width;
-  
+
       span.remove();
-  
+
       return { chHeight, chWidth };
     }
-  
+
     function getGridDimensions(element) {
       const { chHeight, chWidth } = getChDimensions(element);
-  
+
       return { columns: Math.floor(window.visualViewport.width / chWidth), rows: Math.floor(window.visualViewport.height / chHeight) };
     }
-  
+
     function initEventHandlers() {
       document.addEventListener("keydown", keydownHandler);
       observer = new ResizeObserver(resizeHandler);
       observer.observe(screenElement);
     }
-  
+
     function keydownHandler(event) {
       /* Need user gesture to start an AudioContext */
       if (beepContext === null) {
         beepContext = new window.AudioContext();
       }
-  
+
       let key = "";
-  
+
       // event.preventDefault();
-  
+
       // If modifier only, return
       if ((event.key === "Alt") ||
         (event.key === "Control") ||
         (event.key === "Shift")) {
         return;
       }
-  
+
       //  The only modifier key that has to be explicitly mapped is
       //  Ctrl because there aren't any ASCII codes that use Alt, and
       //  Shift is already accounted for with unique symbols(capital
       //  letters, +, _ etc.)
-  
+
       if (event.ctrlKey) {
         key += "^";
       }
-  
+
       key += event.key;
-  
+
       if (KEY_MAP.has(key)) {
         inputBuffer.push(KEY_MAP.get(key));
         console.log(inputBuffer);
@@ -246,21 +246,21 @@ if (typeof window.PDCurses === ("undefined" || null)) {
         console.log("key " + key + " doesn't map to ASCII code");
       }
     }
-  
+
     function mapColor(num, r, g, b) {
       colorMap[num] = `rgb(${r}, ${g}, ${b})`;
     }
-  
+
     function PDC_beep() {
       if ((!beepContext) || (throttleBeep)) return;
-  
+
       throttleBeep = true;
-  
+
       setTimeout(() => throttleBeep = false, 250);
-  
+
       let beepSound = beepContext.createOscillator();
       let beepGain = beepContext.createGain();
-  
+
       beepSound.type = "sine";
       beepSound.frequency.value = "587.33";
       beepGain.gain.value = 0.5;
@@ -268,12 +268,12 @@ if (typeof window.PDCurses === ("undefined" || null)) {
         0.01,
         beepContext.currentTime + 0.25
       );
-  
+
       beepSound.connect(beepGain).connect(beepContext.destination);
       beepSound.start();
       beepSound.stop(beepContext.currentTime + 0.25);
     }
-  
+
     function PDC_check_key() {
       if (inputBuffer.length) {
         return TRUE;
@@ -281,7 +281,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
 
       return FALSE;
     }
-  
+
     function PDC_curs_set(visibility) {
       const display = visibility ? "block" : "none";
 
@@ -291,28 +291,28 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     function PDC_flushinp() {
       inputBuffer.length = 0;
     }
-  
+
     function PDC_get_columns() {
       if (!screenElement) {
         console.error("PDC_get_columns(): screenElement doesn't exist. Call PDC_scr_open() to create screenElement.");
-  
+
         return;
       }
-  
+
       return numColumns;
     }
-  
+
     function PDC_get_key(timeout) {
       return inputBuffer.length ? inputBuffer.shift() : ERR;
     }
-  
+
     function PDC_get_rows() {
       if (!screenElement) {
         console.error("PDC_get_rows(): screenElement doesn't exist. Call PDC_scr_open() to create screenElement.");
-  
+
         return;
       }
-  
+
       return numRows;
     }
 
@@ -324,41 +324,41 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       cursorElement.style.cssText = `grid-row:${row + 1};grid-column:${col + 1};--background: ${background};--color: ${color}`;
       cursorElement.textContent = textContent;
     }
-  
+
     function PDC_scr_close() {
       document.removeEventListener("keydown", keydownHandler);
       observer.disconnect();
-  
+
       screenElement?.remove();
     }
-  
+
     function PDC_scr_open() {
       cursorElement = document.createElement("div");
       cursorElement.id = CURSOR_ID;
       cursorElement.classList.add("cursor");
-  
+
       screenElement = document.createElement("dialog");
       screenElement.classList.add("screen");
       screenElement.id = SCREEN_ID;
-  
+
       document.body.append(screenElement);
-    
+
       ({ columns: numColumns, rows: numRows } = getGridDimensions(screenElement));
       screenElement.style.setProperty("--cols", numColumns);
       screenElement.style.setProperty("--rows", numRows);
-  
+
       console.log(`numRows:${numRows} numColumns:${numColumns}`);
-  
+
       createCells(0, numColumns, 0, numRows);
 
       PDC_gotoyx(0, 0);
       screenElement.append(cursorElement);
-  
+
       initEventHandlers();
-  
+
       return OK;
     }
-  
+
     function removeCells(columnIndex, rowIndex) {
       for (let row = rowIndex; row < numRows; ++row) {
         for (let column = columnIndex; column < numColumns; ++column) {
@@ -366,48 +366,48 @@ if (typeof window.PDCurses === ("undefined" || null)) {
         }
       }
     }
-  
+
     function resizeHandler() {
       const { columns: newColumns, rows: newRows } = getGridDimensions(screenElement);
-  
+
       const screenComputedStyle = window.getComputedStyle(screenElement);
-  
+
       if ((newColumns != numColumns) || (newRows != numRows)) {
         screenElement.style.setProperty("--cols", numColumns);
         screenElement.style.setProperty("--rows", numRows);
-  
+
         if (newRows < numRows) {
           removeCells(0, newRows);
         }
-  
+
         if (newColumns < numColumns) {
           removeCells(newColumns, 0);
         }
-  
+
         if (newRows > numRows) {
           createCells(0, numColumns, numRows, newRows);
         }
-  
+
         if (newColumns > numColumns) {
           createCells(numColumns, newColumns, 0, newRows);
         }
-  
+
         numColumns = newColumns;
         numRows = newRows;
-  
+
         inputBuffer.unshift(KEY_RESIZE)
         console.log(`resize numRows:${numRows} numColumns:${numColumns}`);
       }
     }
-  
+
     function setCell(row, column, ch, color, background, blink, bold, underline) {
       if (screenBuffer[row][column]) {
         screenBuffer[row][column].style.setProperty("--background", `${colorMap[background]}`);
         screenBuffer[row][column].style.setProperty("--color", `${colorMap[color]}`);
-        screenBuffer[row][column].style.setProperty("text-decoration", `${ underline ? "underline" : "none" }`);
+        screenBuffer[row][column].style.setProperty("text-decoration", `${underline ? "underline" : "none"}`);
         screenBuffer[row][column].textContent = String.fromCodePoint(ch);
 
-        if (blink) { 
+        if (blink) {
           screenBuffer[row][column].classList.add("blink-text");
         } else {
           screenBuffer[row][column].classList.remove("blink-text");
@@ -422,7 +422,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
         console.error(`error: tried to access row ${row} column ${column}`);
       }
     }
-  
+
     return {
       mapColor: mapColor,
       PDC_beep: PDC_beep,
