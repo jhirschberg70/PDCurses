@@ -400,11 +400,10 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       }
     }
 
-    function setCell(row, column, ch, color, background, blink, bold, underline) {
+    function setCell(row, column, ch, color, background, blink, bold, underline, italic) {
       if (screenBuffer[row][column]) {
         screenBuffer[row][column].style.setProperty("--background", `${colorMap[background]}`);
         screenBuffer[row][column].style.setProperty("--color", `${colorMap[color]}`);
-        screenBuffer[row][column].style.setProperty("text-decoration", `${underline ? "underline" : "none"}`);
         screenBuffer[row][column].textContent = String.fromCodePoint(ch);
 
         if (blink) {
@@ -417,6 +416,18 @@ if (typeof window.PDCurses === ("undefined" || null)) {
           screenBuffer[row][column].classList.add("bold");
         } else {
           screenBuffer[row][column].classList.remove("bold");
+        }
+
+        if (italic) {
+          screenBuffer[row][column].classList.add("italic");
+        } else {
+          screenBuffer[row][column].classList.remove("italic");
+        }
+
+        if (underline) {
+          screenBuffer[row][column].classList.add("underline");
+        } else {
+          screenBuffer[row][column].classList.remove("underline");
         }
       } else {
         console.error(`error: tried to access row ${row} column ${column}`);
