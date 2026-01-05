@@ -35,6 +35,7 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
 
     bool blink = FALSE;
     bool bold = FALSE;
+    bool italic = FALSE;
     bool underline = FALSE;
 
     for (int i = 0; i < len; ++i) {
@@ -56,10 +57,10 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
 
         if ((srcp[i] & A_BOLD) && (sysattrs & A_BOLD))
             bold = TRUE;
-        
-        if ((srcp[i] & A_UNDERLINE) && (sysattrs & A_UNDERLINE))
-            underline = TRUE;
 
+        if ((srcp[i] & A_ITALIC) && (sysattrs & A_ITALIC))
+            italic = TRUE;
+        
         if ((srcp[i] & A_REVERSE) && (sysattrs & A_REVERSE))
         {
             short temp = color;
@@ -68,6 +69,9 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
             background = temp;
         }
 
-        EM_ASM(PDCurses.setCell($0, $1, $2, $3, $4, $5, $6, $7), lineno, x + i, codePoint, color, background, blink, bold, underline);
+        if ((srcp[i] & A_UNDERLINE) && (sysattrs & A_UNDERLINE))
+            underline = TRUE;
+
+        EM_ASM(PDCurses.setCell($0, $1, $2, $3, $4, $5, $6, $7, $8), lineno, x + i, codePoint, color, background, blink, bold, underline, italic);
     }
 }

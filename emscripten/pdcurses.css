@@ -80,6 +80,10 @@ html {
   }
 }
 
+.italic {
+  font-style: italic;
+}
+
 .screen {
   --cols: 0;
   --rows: 0;
@@ -98,4 +102,8 @@ html {
   overflow: hidden;
   top: 0;
   width: 100dvw;
+}
+
+.underline {
+  text-decoration: underline;
 }
