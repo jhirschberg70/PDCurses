@@ -151,6 +151,10 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       ["Home",       0x106]
     ]);
 
+    const PREVENT_DEFAULT = new Set([
+      "Escape"
+    ]);
+
     const colorMap = [];
     const inputBuffer = [];
     const screenBuffer = [];
@@ -217,6 +221,9 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       }
 
       let key = "";
+
+    
+      if (PREVENT_DEFAULT.has(event.key)) event.preventDefault();
 
       // event.preventDefault();
 
@@ -342,6 +349,8 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       screenElement.id = SCREEN_ID;
 
       document.body.append(screenElement);
+      
+      screenElement.showModal();
 
       ({ columns: numColumns, rows: numRows } = getGridDimensions(screenElement));
       screenElement.style.setProperty("--cols", numColumns);
