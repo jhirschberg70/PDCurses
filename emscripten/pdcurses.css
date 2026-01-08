@@ -1,63 +1,11 @@
 @import url("https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap");
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-:root {
-  --background: rgba(0, 0, 0, 1.0);
-  --color: #fff;
-  --font-family: monospace;
-  --font-size: 16;
-  --line-height: 1.2;
-  --row-size: calc(var(--font-size) * var(--line-height) * 1px);
-}
-
-body {
-  background-color: var(--background);
-  /* font-family: var(--font-family); uncomment to use google fonts*/
-}
-
-html {
-  height: 100%;
-  width: 100%;
-}
-
-.blink-text {
-  animation-duration: 1.2s;
-  animation-iteration-count: infinite;
-  animation-name: blink-text;
-}
-
-.bold {
-  font-weight: 700;
-}
-
-.cell {
-  --background: transparent;
-  --color: white;
-  background-color: var(--background);
-  color: var(--color);
-  grid-column: var(--col)/span 1;
-  grid-row: var(--row)/span 1;
-  height: var(--row-size);
-  width: 1ch;
-}
-
-.cursor {
-  animation-duration: 1.2s;
-  animation-iteration-count: infinite;
-  animation-name: blink-cursor;
-}
-
 @keyframes blink-cursor {
 
   0%,
   49% {
-    background-color: var(--color);
-    color: var(--background);
+    background-color: var(--color, white);
+    color: var(--background, black);
   }
 
   50%,
@@ -80,6 +28,69 @@ html {
   }
 }
 
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --background: rgba(0, 0, 0, 1.0);
+  --col-size: 1ch;
+  --color: #fff;
+  --font-family: monospace;
+  --font-size: 16;
+  --line-height: 1.2;
+  --row-size: 1lh;
+}
+
+body {
+  background-color: var(--background);
+  /* font-family: var(--font-family); uncomment to use google fonts*/
+}
+
+html {
+  height: 100%;
+  width: 100%;
+}
+
+.background {
+  background-color: var(--background);
+  color: transparent;
+  grid-column: var(--col)/span 1;
+  grid-row: var(--row)/span 1;
+  min-width: 1ch;
+  width: fit-content;
+}
+
+.blink-text {
+  animation-duration: 1.2s;
+  animation-iteration-count: infinite;
+  animation-name: blink-text;
+}
+
+.bold {
+  font-weight: 700;
+}
+
+.cursor {
+  animation-duration: 1.2s;
+  animation-iteration-count: infinite;
+  animation-name: blink-cursor;
+  min-width: 1ch;
+  width: fit-content;
+  z-index: 2;
+}
+
+.foreground {
+  background-color: transparent;
+  color: var(--color, white);
+  grid-column: var(--col)/span 1;
+  grid-row: var(--row)/span 1;
+  width: fit-content;
+  z-index: 1;
+}
+
 .italic {
   font-style: italic;
 }
@@ -94,7 +105,7 @@ html {
   font-family: var(--font-family);
   font-size: calc(var(--font-size) * 1px);
   gap: 0;
-  grid-template-columns: repeat(var(--cols), 1ch);
+  grid-template-columns: repeat(var(--cols), var(--col-size));
   grid-template-rows: repeat(var(--rows), var(--row-size));
   height: 100dvh;
   left: 0;

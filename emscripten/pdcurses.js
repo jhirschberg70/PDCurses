@@ -10,7 +10,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     const OK = 0;
     const SCREEN_ID = "screen";
     const TRUE = 1;
-
+  
     const KEY_MAP = new Map([
       ["^@",         0x00],
       ["^a",         0x01],
@@ -150,11 +150,60 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       ["ArrowRight", 0x105],
       ["Home",       0x106]
     ]);
-
+      
     const PREVENT_DEFAULT = new Set([
       "Escape"
     ]);
 
+    const WHITESPACE = new Set([
+      0x0009,
+      0x000A,
+      0x000B,
+      0x000C,
+      0x000D,
+      0x0020,
+      0x0085,
+      0x00A0,
+      0x0020,
+      0x1680,
+      0x2000,
+      0x2002,
+      0x2002,
+      0x2001,
+      0x2003,
+      0x2003,
+      0x2002,
+      0x2000,
+      0x2002,
+      0x2003,
+      0x2001,
+      0x2003,
+      0x2004,
+      0x2005,
+      0x2006,
+      0x2009,
+      0x2007,
+      0x2008,
+      0x2009,
+      0x2002,
+      0x2008,
+      0x200A,
+      0x2028,
+      0x2029,
+      0x202F,
+      0x00A0,
+      0x2009,
+      0x205F,
+      0x3000,
+      0x180E,
+      0x200B,
+      0x200C,
+      0x200D,
+      0x2060,
+      0x200B,
+      0xFEFF
+    ]);
+  
     const colorMap = [];
     const inputBuffer = [];
     const screenBuffer = [];
@@ -168,19 +217,28 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     let throttleBeep = false;
 
     function createCells(columnIndex, numColumns, rowIndex, numRows) {
+      function cell(background, foreground) {
+        this.background = background;
+        this.foreground = foreground;
+      }
+
       for (let row = rowIndex; row < numRows; ++row) {
         screenBuffer[row] = screenBuffer[row] ?? [];
 
         for (let column = columnIndex; column < numColumns; ++column) {
           if (!screenBuffer[row][column]) {
-            const cell = document.createElement("div");
-            cell.classList.add("cell");
-            cell.style.setProperty("--col", column + 1);
-            cell.style.setProperty("--row", row + 1);
-            screenBuffer[row][column] = cell;
-          }
+            const background = document.createElement("div");
+            const foreground = document.createElement("div");
 
-          screenElement.append(screenBuffer[row][column]);
+            background.classList.add("background");
+            background.style.setProperty("--col", column + 1);
+            background.style.setProperty("--row", row + 1);
+
+            foreground.classList.add("foreground");
+            foreground.style.setProperty("--col", column + 1);
+            foreground.style.setProperty("--row", row + 1);
+            screenBuffer[row][column] = new cell(background, foreground);
+          }
         }
       }
     }
@@ -324,9 +382,9 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     }
 
     function PDC_gotoyx(row, col) {
-      const background = screenBuffer[row][col].style.getPropertyValue("--background");
-      const color = screenBuffer[row][col].style.getPropertyValue("--color");
-      const textContent = screenBuffer[row][col].textContent;
+      const background = screenBuffer[row][col].background.style.getPropertyValue("--background");
+      const color = screenBuffer[row][col].foreground.style.getPropertyValue("--color");
+      const textContent = screenBuffer[row][col].foreground.textContent;
 
       cursorElement.style.cssText = `grid-row:${row + 1};grid-column:${col + 1};--background: ${background};--color: ${color}`;
       cursorElement.textContent = textContent;
@@ -371,7 +429,10 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     function removeCells(columnIndex, rowIndex) {
       for (let row = rowIndex; row < numRows; ++row) {
         for (let column = columnIndex; column < numColumns; ++column) {
-          if (screenBuffer[row][column]) screenBuffer[row][column].remove();
+          if (screenBuffer[row][column]) {
+            screenBuffer[row][column].background.remove();
+            screenBuffer[row][column].foreground.remove();
+          }
         }
       }
     }
@@ -409,34 +470,46 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       }
     }
 
-    function setCell(row, column, ch, color, background, blink, bold, underline, italic) {
+    function setCell(row, column, codePoint, color, background, blink, bold, underline, italic) {
       if (screenBuffer[row][column]) {
-        screenBuffer[row][column].style.setProperty("--background", `${colorMap[background]}`);
-        screenBuffer[row][column].style.setProperty("--color", `${colorMap[color]}`);
-        screenBuffer[row][column].textContent = String.fromCodePoint(ch);
+        screenBuffer[row][column].background.style.setProperty("--background", `${colorMap[background]}`);
+        screenBuffer[row][column].foreground.style.setProperty("--color", `${colorMap[color]}`);
+        screenBuffer[row][column].foreground.textContent = String.fromCodePoint(codePoint);
 
         if (blink) {
-          screenBuffer[row][column].classList.add("blink-text");
+          screenBuffer[row][column].foreground.classList.add("blink-text");
         } else {
-          screenBuffer[row][column].classList.remove("blink-text");
+          screenBuffer[row][column].foreground.classList.remove("blink-text");
         }
 
         if (bold) {
-          screenBuffer[row][column].classList.add("bold");
+          screenBuffer[row][column].foreground.classList.add("bold");
         } else {
-          screenBuffer[row][column].classList.remove("bold");
+          screenBuffer[row][column].foreground.classList.remove("bold");
         }
 
         if (italic) {
-          screenBuffer[row][column].classList.add("italic");
+          screenBuffer[row][column].foreground.classList.add("italic");
         } else {
-          screenBuffer[row][column].classList.remove("italic");
+          screenBuffer[row][column].foreground.classList.remove("italic");
         }
 
         if (underline) {
-          screenBuffer[row][column].classList.add("underline");
+          screenBuffer[row][column].foreground.classList.add("underline");
         } else {
-          screenBuffer[row][column].classList.remove("underline");
+          screenBuffer[row][column].foreground.classList.remove("underline");
+        }
+
+        if (background == 0) {
+          screenBuffer[row][column].background.remove();
+        } else if (!(screenBuffer[row][column].background.isConnected)) {
+          screenElement.append(screenBuffer[row][column].background);
+        }
+
+        if (WHITESPACE.has(codePoint)) {
+          screenBuffer[row][column].foreground.remove();
+        } else if (!(screenBuffer[row][column].foreground.isConnected)) {
+          screenElement.append(screenBuffer[row][column].foreground);
         }
       } else {
         console.error(`error: tried to access row ${row} column ${column}`);
