@@ -10,12 +10,12 @@
       function documentReady() {
         return new Promise((resolve, reject) => {
           if (document.readyState === "complete") {
-            resolve();
+            resolve(true);
           } else {
             function listener() {
               this.clearTimeout(timeout);
               window.removeEventListener("load", listener, true);
-              resolve();
+              resolve(true);
             }
 
             const timeout = setTimeout(() => {
@@ -27,14 +27,17 @@
           }
         });
       }
-      
+
       self.Module = {
         onRuntimeInitialized: (async () => {
           console.log("emscripten ready")
-          await documentReady();
-          console.log("document ready");
-          console.log("calling main...")
-          Module["callMain"]();
+          const ready = await documentReady().catch((error) => { console.error(error); });
+
+          if (ready) {
+            console.log("document ready");
+            console.log("calling main...")
+            Module["callMain"]();
+          }
         }),
         print: (text) => { console.log(text); },
         printErr: (text) => { console.error(text); }
