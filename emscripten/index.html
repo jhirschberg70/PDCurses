@@ -12,19 +12,22 @@
           if (document.readyState === "complete") {
             resolve();
           } else {
+            function listener() {
+              this.clearTimeout(timeout);
+              window.removeEventListener("load", listener, true);
+              resolve();
+            }
+
             const timeout = setTimeout(() => {
               window.removeEventListener("load", listener, true);
               reject(new Error("document failed to load"));
             }, 5000);
 
-            window.addEventListener("load", function listener() {
-              this.clearTimeout(timeout);
-              window.removeEventListener("load", listener, true);
-              resolve();
-            }, true);
+            window.addEventListener("load", listener, true);
           }
         });
       }
+      
       self.Module = {
         onRuntimeInitialized: (async () => {
           console.log("emscripten ready")
