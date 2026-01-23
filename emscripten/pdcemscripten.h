@@ -6,6 +6,8 @@
 #include <curspriv.h>
 #include <emscripten.h>
 
+#define PDC_EMSCRIPTEN_MAXCOL 256
+
 typedef struct 
 {
   short r;
@@ -13,6 +15,6 @@ typedef struct
   short b;
 } PDC_EMSCRIPTEN_COLOR;
 
-extern PDC_EMSCRIPTEN_COLOR pdc_color[PDC_MAXCOL];
+extern PDC_EMSCRIPTEN_COLOR pdc_color[PDC_EMSCRIPTEN_MAXCOL];
 
 #endif

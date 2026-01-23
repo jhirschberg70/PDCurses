@@ -2,7 +2,7 @@
 
 #include "pdcemscripten.h"
 
-PDC_EMSCRIPTEN_COLOR pdc_color[PDC_MAXCOL];
+PDC_EMSCRIPTEN_COLOR pdc_color[PDC_EMSCRIPTEN_MAXCOL];
 
 static void _initialize_colors(void)
 {
@@ -10,13 +10,13 @@ static void _initialize_colors(void)
 
     for (i = 0; i < 8; i++)
     {
-        pdc_color[i].r = (i & COLOR_RED) ? 0xc0 : 0;
-        pdc_color[i].g = (i & COLOR_GREEN) ? 0xc0 : 0;
-        pdc_color[i].b = (i & COLOR_BLUE) ? 0xc0 : 0;
+        pdc_color[i].r = (i & COLOR_RED) ? 0x80 + ((i == 7) ? 0x40 : 0) : 0;
+        pdc_color[i].g = (i & COLOR_GREEN) ? 0x80 + ((i == 7) ? 0x40 : 0) : 0;
+        pdc_color[i].b = (i & COLOR_BLUE) ? 0x80 + ((i == 7) ? 0x40 : 0) : 0;
 
-        pdc_color[i + 8].r = (i & COLOR_RED) ? 0xff : 0x40;
-        pdc_color[i + 8].g = (i & COLOR_GREEN) ? 0xff : 0x40;
-        pdc_color[i + 8].b = (i & COLOR_BLUE) ? 0xff : 0x40;
+        pdc_color[i + 8].r = (i & COLOR_RED) ? 0xff - ((i == 0) ? 0x80 : 0) : 0;
+        pdc_color[i + 8].g = (i & COLOR_GREEN) ? 0xff - ((i == 0) ? 0x80 : 0) : 0;
+        pdc_color[i + 8].b = (i & COLOR_BLUE) ? 0xff - ((i == 0) ? 0x80 : 0) : 0;
     }
 
     /* 256-color xterm extended palette: 216 colors in a 6x6x6 color
