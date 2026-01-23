@@ -14,30 +14,33 @@ PDCURSES_EMSCRIPTEN_H	= $(osdir)/pdcemscripten.h
 
 # If your system doesn't have these, remove the defines here
 SFLAGS		+= -DHAVE_VSNPRINTF -DHAVE_VSSCANF
-
-DEMO_LDFLAGS	= $(LIBCURSES) --pre-js $(PDCURSES_JS) -lidbfs.js -sASYNCIFY -sENVIRONMENT=web -sEXIT_RUNTIME=1 -sEXPORTED_FUNCTIONS="[_main, __sigwinch_handler]" -sEXPORTED_RUNTIME_METHODS="[cwrap, callMain]" -sFORCE_FILESYSTEM -sINVOKE_RUN=0 -sSINGLE_FILE=1
-#DEMO_LDFLAGS	= $(LIBCURSES) -sASYNCIFY -sENVIRONMENT=web -sEXPORTED_FUNCTIONS="[_main, __sigwinch_handler]" -sEXPORTED_RUNTIME_METHODS="[cwrap, callMain]" -sFORCE_FILESYSTEM -sINVOKE_RUN=0 -sSINGLE_FILE=1
+DEMOS =
 
 ifeq ($(DEBUG),Y)
+ifeq ($(WIDE),Y)
+	CFLAGS  = -g3 -Wall -DPDCDEBUG -DPDC_WIDE
+	LIBCURSES	= libpdcursesw_g.a
+	DEMOS = unicode.js
+else
 	CFLAGS  = -g3 -Wall -DPDCDEBUG
-	LDFLAGS = $(LIBCURSES) -sASSERTIONS=2 -sNO_DISABLE_EXCEPTION_CATCHING -sSAFE_HEAP=1 -sSTACK_OVERFLOW_CHECK=2
+	LIBCURSES	= libpdcurses_g.a
+endif
+else ifeq ($(WIDE), Y)
+	CFLAGS  = -O3 -Wall -DPDC_WIDE
+	LIBCURSES	= libpdcursesw.a
+	DEMOS = unicode.js
 else
 	CFLAGS  = -O3 -Wall
-	LDFLAGS	= $(LIBCURSES) -O3
-endif
-
-ifeq ($(WIDE), Y)
-	CFLAGS += -DPDC_WIDE
+	LIBCURSES	= libpdcurses.a
 endif
 
 ARFLAGS = rcv
 BUILD		= $(CC) $(CFLAGS) -I$(PDCURSES_SRCDIR)
 
-LINK		= $(CC)
-LIBCURSES	= libpdcurses.a
 PDCURSES_JS = pdcurses.js
 
-DEMOS			= firework.js ozdemo.js rain.js testcurs.js unicode.js worm.js xmas.js
+DEMO_LDFLAGS	= $(LIBCURSES) --pre-js $(PDCURSES_JS) -lidbfs.js -sASYNCIFY -sENVIRONMENT=web -sEXIT_RUNTIME=1 -sEXPORTED_FUNCTIONS="[_main, __sigwinch_handler]" -sEXPORTED_RUNTIME_METHODS="[cwrap, callMain]" -sFORCE_FILESYSTEM -sINVOKE_RUN=0 -sSINGLE_FILE=1
+DEMOS			+= firework.js ozdemo.js rain.js testcurs.js worm.js xmas.js
 
 .PHONY: all libs clean demos
 
@@ -46,7 +49,7 @@ all:	libs demos
 libs:	$(LIBCURSES)
 
 clean:
-	-rm -rf *.o trace $(LIBCURSES) $(DEMOS)
+	-rm -rf *.o trace firework.js ozdemo.js rain.js testcurs.js unicode.js worm.js xmas.js libpdcurses.a libpdcurses_g.a libpdcursesw.a libpdcursesw_g.a
 
 demos:	$(DEMOS)
 
