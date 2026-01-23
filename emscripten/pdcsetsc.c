@@ -25,7 +25,7 @@ int PDC_set_blink(bool blinkon)
         return ERR;
 
     if (SP->color_started)
-        COLORS = PDC_MAXCOL;
+        COLORS = PDC_EMSCRIPTEN_MAXCOL;
 
 
     if (blinkon)
@@ -49,7 +49,7 @@ int PDC_set_bold(bool boldon)
         return ERR;
 
     if (SP->color_started)
-        COLORS = PDC_MAXCOL;
+        COLORS = PDC_EMSCRIPTEN_MAXCOL;
 
 
     if (boldon)
