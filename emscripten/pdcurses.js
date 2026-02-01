@@ -20,8 +20,6 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       ["^e",         0x05],
       ["^f",         0x06],
       ["^g",         0x07],
-      ["^h",         0x08],
-      ["Backspace",  0x08],
       ["^i",         0x09],
       ["^j",         0x0A],
       ["^k",         0x0B],
@@ -142,13 +140,31 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       ["{",          0x7B],
       ["|",          0x7C],
       ["~",          0x7E],
-      ["^?",         0x7F],
-      ["Delete",     0x7F],
       ["ArrowDown",  0x102],
       ["ArrowUp",    0x103],
       ["ArrowLeft",  0x104],
       ["ArrowRight", 0x105],
-      ["Home",       0x106]
+      ["Home",       0x106], 
+      ["^h",         0x107], // KEY_BACKSPACE
+      ["Backspace",  0x107], // KEY_BACKSPACE
+      ["F1",         0x109], // KEY_F(1) - KEY_F(12)
+      ["F2",         0x10a], 
+      ["F3",         0x10b],
+      ["F4",         0x10c],
+      ["F5",         0x10d],
+      ["F6",         0x10e],
+      ["F7",         0x10f],
+      ["F8",         0x110],
+      ["F9",         0x111],
+      ["F10",        0x112],
+      ["F11",        0x113],
+      ["F12",        0x114],
+      ["Insert",     0x14b], // KEY_IC
+      ["^?",         0x14a], // KEY_DC
+      ["Delete",     0x14a], // KEY_DC
+      ["PageUp",     0x152], // KEY_PPAGE
+      ["PageDown",   0x153], // KEY_NPAGE
+      ["End",        0x168]  // KEY_END
     ]);
       
     const PREVENT_DEFAULT = new Set([
