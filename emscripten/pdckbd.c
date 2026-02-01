@@ -20,7 +20,11 @@ int PDC_get_key(void)
 {
   PDC_LOG(("PDC_get_key() - called\n"));
 
-  return EM_ASM_INT(return PDCurses.PDC_get_key());
+  int key = EM_ASM_INT(return PDCurses.PDC_get_key());
+  
+  SP->key_code = key > KEY_CODE_YES;
+  
+  return key;
 }
 
 bool PDC_has_mouse(void)
