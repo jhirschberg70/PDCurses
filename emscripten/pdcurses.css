@@ -4,8 +4,8 @@
 
   0%,
   49% {
-    background-color: var(--color, white);
-    color: var(--background, black);
+    background-color: var(--color);
+    color: var(--background);
   }
 
   50%,
