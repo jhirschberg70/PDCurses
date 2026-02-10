@@ -247,11 +247,11 @@ if (typeof window.PDCurses === ("undefined" || null)) {
             const foreground = document.createElement("div");
 
             background.classList.add("background");
-            background.style.setProperty("--col", column + 1);
+            background.style.setProperty("--column", column + 1);
             background.style.setProperty("--row", row + 1);
 
             foreground.classList.add("foreground");
-            foreground.style.setProperty("--col", column + 1);
+            foreground.style.setProperty("--column", column + 1);
             foreground.style.setProperty("--row", row + 1);
             screenBuffer[row][column] = new cell(background, foreground);
           }
@@ -289,6 +289,9 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     }
 
     function keydownHandler(event) {
+      /* Restart the cursor animation on any keydown */
+      restartCursorAnimation();
+
       /* Need user gesture to start an AudioContext */
       if (beepContext === null) {
         beepContext = new window.AudioContext();
@@ -398,12 +401,18 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     }
 
     function PDC_gotoyx(row, col) {
+      const currentColumn = parseInt(cursorElement.style.getPropertyValue("--column"));
+      const currentRow = parseInt(cursorElement.style.getPropertyValue("--row"));
       const background = screenBuffer[row][col].background.style.getPropertyValue("--background");
       const color = screenBuffer[row][col].foreground.style.getPropertyValue("--color");
       const textContent = screenBuffer[row][col].foreground.textContent;
 
-      cursorElement.style.cssText = `grid-row:${row + 1};grid-column:${col + 1};--background: ${background};--color: ${color}`;
+      cursorElement.style.setProperty("--column", col + 1);
+      cursorElement.style.setProperty("--row", row + 1);
+      cursorElement.style.setProperty("--background", `${(background == "") ? "black" : background}`);
+      cursorElement.style.setProperty("--color", `${(color == "") ? "white" : color}`);
       cursorElement.textContent = textContent;
+      restartCursorAnimation();
     }
 
     function PDC_scr_close() {
@@ -427,7 +436,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       screenElement.showModal();
 
       ({ columns: numColumns, rows: numRows } = getGridDimensions(screenElement));
-      screenElement.style.setProperty("--cols", numColumns);
+      screenElement.style.setProperty("--columns", numColumns);
       screenElement.style.setProperty("--rows", numRows);
 
       console.log(`numRows:${numRows} numColumns:${numColumns}`);
@@ -459,7 +468,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       const screenComputedStyle = window.getComputedStyle(screenElement);
 
       if ((newColumns != numColumns) || (newRows != numRows)) {
-        screenElement.style.setProperty("--cols", numColumns);
+        screenElement.style.setProperty("--columns", numColumns);
         screenElement.style.setProperty("--rows", numRows);
 
         if (newRows < numRows) {
@@ -484,6 +493,14 @@ if (typeof window.PDCurses === ("undefined" || null)) {
         inputBuffer.unshift(KEY_RESIZE)
         console.log(`resize numRows:${numRows} numColumns:${numColumns}`);
       }
+    }
+
+    function restartCursorAnimation() {
+      // cursorElement.offsetWidth is necessary to force reflow, which forces the browser to
+      // set animation-name to none. Otherwise, it could potentially optimize it away.
+      cursorElement.style.setProperty("animation-name", "none");
+      cursorElement.offsetWidth;
+      cursorElement.style.setProperty("animation-name", "blink-cursor");
     }
 
     function setCell(row, column, codePoint, color, background, blink, bold, underline, italic) {

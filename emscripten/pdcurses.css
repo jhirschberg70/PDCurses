@@ -36,7 +36,7 @@
 
 :root {
   --background: rgba(0, 0, 0, 1.0);
-  --col-size: 1ch;
+  --column-size: 1ch;
   --color: #fff;
   --font-family: monospace;
   --font-size: 16;
@@ -57,7 +57,7 @@ html {
 .background {
   background-color: var(--background);
   color: transparent;
-  grid-column: var(--col)/span 1;
+  grid-column: var(--column)/span 1;
   grid-row: var(--row)/span 1;
   min-width: 1ch;
   width: fit-content;
@@ -77,6 +77,8 @@ html {
   animation-duration: 1.2s;
   animation-iteration-count: infinite;
   animation-name: blink-cursor;
+  grid-column: var(--column)/span 1;
+  grid-row: var(--row)/span 1;
   min-width: 1ch;
   width: fit-content;
   z-index: 2;
@@ -85,7 +87,7 @@ html {
 .foreground {
   background-color: transparent;
   color: var(--color, white);
-  grid-column: var(--col)/span 1;
+  grid-column: var(--column)/span 1;
   grid-row: var(--row)/span 1;
   width: fit-content;
   z-index: 1;
@@ -105,7 +107,7 @@ html {
   font-family: var(--font-family);
   font-size: calc(var(--font-size) * 1px);
   gap: 0;
-  grid-template-columns: repeat(var(--cols), var(--col-size));
+  grid-template-columns: repeat(var(--columns), var(--column-size));
   grid-template-rows: repeat(var(--rows), var(--row-size));
   height: 100dvh;
   left: 0;
