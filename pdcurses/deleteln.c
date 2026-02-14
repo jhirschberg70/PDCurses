@@ -165,9 +165,9 @@ int winsertln(WINDOW *win)
 
     blank = win->_bkgd;
 
-    temp = win->_y[win->_maxy - 1];
+    temp = win->_y[win->_bmarg];
 
-    for (y = win->_maxy - 1; y > win->_cury; y--)
+    for (y = win->_bmarg; y > win->_cury; y--)
     {
         win->_y[y] = win->_y[y - 1];
         win->_firstch[y] = 0;
