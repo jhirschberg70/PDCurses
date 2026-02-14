@@ -76,8 +76,11 @@ int waddchnstr(WINDOW *win, const chtype *ch, int n)
 
     PDC_LOG(("waddchnstr() - called: win=%p n=%d\n", win, n));
 
-    if (!win || !ch || !n || n < -1)
+    if (!win || !ch || n < -1)
         return ERR;
+
+    if (n == 0)
+        return OK;
 
     x = win->_curx;
     y = win->_cury;
