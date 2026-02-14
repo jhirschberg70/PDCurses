@@ -47,8 +47,11 @@ int wscrl(WINDOW *win, int n)
 
     /* Check if window scrolls. Valid for window AND pad */
 
-    if (!win || !win->_scroll || !n)
+    if (!win || !win->_scroll)
         return ERR;
+
+    if (!n)
+        return OK;
 
     blank = win->_bkgd;
 
