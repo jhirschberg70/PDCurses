@@ -366,17 +366,9 @@ int wgetch(WINDOW *win)
     /* refresh window when wgetch is called if there have been changes
        to it and it is not a pad */
 
-    #ifdef __EMSCRIPTEN__
     if ((is_wintouched(win) || (win->_flags & _HASMOVED))
 	    && !(win->_flags & _PAD))
 	    wrefresh(win);
-    #else
-    if (!(win->_flags & _PAD) && ((!win->_leaveit &&
-         (win->_begx + win->_curx != SP->curscol ||
-          win->_begy + win->_cury != SP->cursrow)) || is_wintouched(win)))
-        wrefresh(win);
-    #endif
-
     /* if ungotten char exists, remove and return it */
 
     if (SP->c_ungind)
