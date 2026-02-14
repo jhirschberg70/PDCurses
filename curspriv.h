@@ -40,6 +40,9 @@ typedef struct           /* structure for ripped off lines */
 #define _SUBWIN    0x01  /* window is a subwindow */
 #define _PAD       0x10  /* X/Open Pad. */
 #define _SUBPAD    0x20  /* X/Open subpad. */
+#ifdef __EMSCRIPTEN__
+#define _HASMOVED  0x40  /* jhirschberg70 */
+#endif
 
 /* Miscellaneous */
 
@@ -56,7 +59,11 @@ typedef struct           /* structure for ripped off lines */
 void    PDC_beep(void);
 bool    PDC_can_change_color(void);
 int     PDC_color_content(short, short *, short *, short *);
-bool    PDC_check_key(void);
+#ifdef __EMSCRIPTEN__
+bool    PDC_check_key(int delay);
+#else
+bool    PDC_check_key();
+#endif
 int     PDC_curs_set(int);
 void    PDC_doupdate(void);
 void    PDC_flushinp(void);
