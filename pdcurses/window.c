@@ -316,8 +316,9 @@ int mvwin(WINDOW *win, int y, int x)
 {
     PDC_LOG(("mvwin() - called\n"));
 
-    if (!win || (y + win->_maxy > LINES || y < 0)
-             || (x + win->_maxx > COLS || x < 0))
+    if (!win || (win->_flags & (_SUBWIN | _SUBPAD)) ||
+        (y + win->_maxy > LINES || y < 0) ||
+        (x + win->_maxx > COLS || x < 0))
         return ERR;
 
     win->_begy = y;
@@ -458,9 +459,9 @@ WINDOW *dupwin(WINDOW *win)
     new->_bmarg = win->_bmarg;
     new->_parx = win->_parx;
     new->_pary = win->_pary;
-    new->_parent = win->_parent;
+    new->_parent = NULL;
     new->_bkgd = win->_bkgd;
-    new->_flags = win->_flags;
+    new->_flags = win->_flags & ~(_SUBWIN | _SUBPAD);
 
     return new;
 }
