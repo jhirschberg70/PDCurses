@@ -180,7 +180,7 @@ int touchoverlap(const WINDOW *win1, WINDOW *win2)
     begy1 = win1->_begy;
     begx1 = win1->_begx;
     begy2 = win2->_begy;
-    begx2 = win2->_begy;
+    begx2 = win2->_begx;
 
     starty = max(begy1, begy2);
     startx = max(begx1, begx2);
