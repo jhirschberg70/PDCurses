@@ -210,8 +210,11 @@ int whline(WINDOW *win, chtype ch, int n)
 
     PDC_LOG(("whline() - called\n"));
 
-    if (!win || n < 1)
+    if (!win)
         return ERR;
+
+    if (n < 1)
+        return OK;
 
     startpos = win->_curx;
     endpos = min(startpos + n, win->_maxx) - 1;
@@ -267,8 +270,11 @@ int wvline(WINDOW *win, chtype ch, int n)
 
     PDC_LOG(("wvline() - called\n"));
 
-    if (!win || n < 1)
+    if (!win)
         return ERR;
+
+    if (n < 1)
+        return OK;
 
     endpos = min(win->_cury + n, win->_maxy);
     x = win->_curx;
