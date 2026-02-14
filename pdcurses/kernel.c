@@ -218,11 +218,16 @@ int curs_set(int visibility)
 
     ret_vis = PDC_curs_set(visibility);
 
+    /* If the cursor changes from invisible to visible, its position
+       is NOT supposed to be updated. PDCurses is wrong */
+    #ifdef __EMSCRIPTEN__
+    #else
     /* If the cursor is changing from invisible to visible, update
        its position */
 
     if (visibility && !ret_vis)
         PDC_gotoyx(SP->cursrow, SP->curscol);
+    #endif
 
     return ret_vis;
 }

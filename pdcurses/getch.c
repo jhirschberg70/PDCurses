@@ -331,6 +331,21 @@ int wgetch(WINDOW *win)
     if (!win || !SP)
         return ERR;
 
+    #ifdef __EMSCRIPTEN__ // jhirschberg70
+    int timeout;
+    (void) waitcount;
+    
+    /* use actual delay in ms */
+    if (SP->delaytenths)
+        timeout = 100 * SP->delaytenths;
+    else
+        /* blocking */
+        if ((!win->_nodelay) && (!win->_delayms))
+            timeout = -1
+        /* use win->_delayms */;
+        else
+            timeout = win->_delayms;
+    #else
     waitcount = 0;
 
     /* set the number of 1/20th second napms() calls */
@@ -347,14 +362,20 @@ int wgetch(WINDOW *win)
             if (!waitcount)
                 waitcount = 1;
         }
-
+    #endif    
     /* refresh window when wgetch is called if there have been changes
        to it and it is not a pad */
 
+    #ifdef __EMSCRIPTEN__
+    if ((is_wintouched(win) || (win->_flags & _HASMOVED))
+	    && !(win->_flags & _PAD))
+	    wrefresh(win);
+    #else
     if (!(win->_flags & _PAD) && ((!win->_leaveit &&
          (win->_begx + win->_curx != SP->curscol ||
           win->_begy + win->_cury != SP->cursrow)) || is_wintouched(win)))
         wrefresh(win);
+    #endif
 
     /* if ungotten char exists, remove and return it */
 
@@ -377,6 +398,12 @@ int wgetch(WINDOW *win)
     {
         /* is there a keystroke ready? */
 
+        #ifdef __EMSCRIPTEN__
+        if (!PDC_check_key(timeout))
+        {
+            return ERR;
+        }
+        #else
         if (!PDC_check_key())
         {
             /* if not, handle timeout() and halfdelay() */
@@ -395,6 +422,7 @@ int wgetch(WINDOW *win)
             napms(50);  /* sleep for 1/20th second */
             continue;   /* then check again */
         }
+        #endif
 
         /* if there is, fetch it */
 

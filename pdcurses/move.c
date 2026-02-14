@@ -74,6 +74,7 @@ int wmove(WINDOW *win, int y, int x)
 
     win->_curx = x;
     win->_cury = y;
+    win->_flags |= _HASMOVED;
 
     return OK;
 }

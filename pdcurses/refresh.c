@@ -132,6 +132,8 @@ int wnoutrefresh(WINDOW *win)
         curscr->_curx = win->_curx + begx;
     }
 
+    win->_flags &= ~_HASMOVED;
+
     return OK;
 }
 

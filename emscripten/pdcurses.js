@@ -324,6 +324,9 @@ if (typeof window.PDCurses === ("undefined" || null)) {
 
       if (KEY_MAP.has(key)) {
         inputBuffer.push(KEY_MAP.get(key));
+
+        dispatchEvent(new CustomEvent("inputBufferedEvent"));
+
         console.log(inputBuffer);
       }
       else {
@@ -358,12 +361,30 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       beepSound.stop(beepContext.currentTime + 0.25);
     }
 
-    function PDC_check_key() {
-      if (inputBuffer.length) {
-        return TRUE;
-      }
+    function PDC_check_key(timeout) {
+      return new Promise((resolve) => {
+        if (inputBuffer.length) return resolve(true);
 
-      return FALSE;
+        if (timeout >= 0) {
+          function listener(event) {
+            if (timeoutId) clearTimeout(timeoutId);
+            resolve(true);
+          }
+          
+          let timeoutId = null;
+
+          addEventListener("inputBufferedEvent", listener, { once: true });
+
+          timeoutId = setTimeout(() => {
+            removeEventListener("inputBufferedEvent", listener);
+            resolve(inputBuffer.length > 0);
+          }, timeout);
+        } else {
+          addEventListener("inputBufferedEvent", (event) => {
+            resolve(true);
+          }, { once: true });
+        }
+      });
     }
 
     function PDC_curs_set(visibility) {
@@ -386,8 +407,8 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       return numColumns;
     }
 
-    function PDC_get_key(timeout) {
-      return inputBuffer.length ? inputBuffer.shift() : ERR;
+    function PDC_get_key() {
+      return inputBuffer.shift();
     }
 
     function PDC_get_rows() {
@@ -497,7 +518,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
 
     function restartCursorAnimation() {
       // cursorElement.offsetWidth is necessary to force reflow, which forces the browser to
-      // set animation-name to none. Otherwise, it could potentially optimize it away.
+      // apply animation-name to none. Otherwise, it could potentially optimize it away.
       cursorElement.style.setProperty("animation-name", "none");
       cursorElement.offsetWidth;
       cursorElement.style.setProperty("animation-name", "blink-cursor");
