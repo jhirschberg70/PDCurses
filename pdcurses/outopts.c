@@ -154,8 +154,12 @@ int wsetscrreg(WINDOW *win, int top, int bottom)
 {
     PDC_LOG(("wsetscrreg() - called: top %d bottom %d\n", top, bottom));
 
-    if (win && 0 <= top && top <= win->_cury &&
-        win->_cury <= bottom && bottom < win->_maxy)
+    if (win &&
+        top >= 0 &&
+        top <= win->_maxy &&
+        bottom >= 0 &&
+        bottom <= win->_maxy &&
+	    bottom > top)
     {
         win->_tmarg = top;
         win->_bmarg = bottom;
