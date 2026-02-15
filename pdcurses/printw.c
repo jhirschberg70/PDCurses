@@ -53,11 +53,7 @@ int vwprintw(WINDOW *win, const char *fmt, va_list varglist)
 
     PDC_LOG(("vwprintw() - called\n"));
 
-#ifdef HAVE_VSNPRINTF
-    len = vsnprintf(printbuf, 512, fmt, varglist);
-#else
-    len = vsprintf(printbuf, fmt, varglist);
-#endif
+    len = vsnprintf(printbuf, sizeof(printbuf), fmt, varglist);
     return (waddstr(win, printbuf) == ERR) ? ERR : len;
 }
 
