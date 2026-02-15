@@ -433,7 +433,9 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       cursorElement.style.setProperty("--background", `${(background == "") ? "black" : background}`);
       cursorElement.style.setProperty("--color", `${(color == "") ? "white" : color}`);
       cursorElement.textContent = textContent;
-      restartCursorAnimation();
+      if ((currentColumn != col + 1) || (currentRow != row + 1)) {
+        restartCursorAnimation();
+      } 
     }
 
     function PDC_scr_close() {
