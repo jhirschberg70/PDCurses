@@ -39,7 +39,7 @@ BUILD		= $(CC) $(CFLAGS) -I$(PDCURSES_SRCDIR)
 
 PDCURSES_JS = pdcurses.js
 
-DEMO_LDFLAGS	= $(LIBCURSES) --pre-js $(PDCURSES_JS) -lidbfs.js -sASYNCIFY -sENVIRONMENT=web -sEXIT_RUNTIME=1 -sEXPORTED_FUNCTIONS="[_main, __sigwinch_handler]" -sEXPORTED_RUNTIME_METHODS="[cwrap, callMain]" -sFORCE_FILESYSTEM -sINVOKE_RUN=0 -sSINGLE_FILE=1
+DEMO_LDFLAGS	= $(LIBCURSES) -lidbfs.js -sASYNCIFY -sENVIRONMENT=web -sEXIT_RUNTIME=1 -sEXPORTED_FUNCTIONS="[_main, __sigwinch_handler]" -sEXPORTED_RUNTIME_METHODS="[cwrap, callMain]" -sFORCE_FILESYSTEM -sINVOKE_RUN=0 -sSINGLE_FILE=1
 DEMOS			+= firework.js ozdemo.js rain.js testcurs.js worm.js xmas.js
 
 .PHONY: all libs clean demos
