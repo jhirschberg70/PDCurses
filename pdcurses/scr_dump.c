@@ -161,6 +161,8 @@ WINDOW *getwin(FILE *filep)
         }
     }
 
+    win->_parent = NULL;
+    win->_flags &= ~(_SUBWIN | _SUBPAD);
     touchwin(win);
 
     return win;
