@@ -127,7 +127,7 @@ int waddch(WINDOW *win, const chtype ch)
     x = win->_curx;
     y = win->_cury;
 
-    if (y > win->_maxy || x > win->_maxx || y < 0 || x < 0)
+    if (y >= win->_maxy || x >= win->_maxx || y < 0 || x < 0)
         return ERR;
 
     xlat = !SP->raw_out && !(ch & A_ALTCHARSET);
