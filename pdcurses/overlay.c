@@ -57,6 +57,7 @@ static int _copy_win(const WINDOW *src_w, WINDOW *dst_w, int src_tr,
 {
     int col, line, y1, fc, *minchng, *maxchng;
     chtype *w1ptr, *w2ptr;
+    chtype src_bkgd_char;
 
     int lc = 0;
     int xdiff = src_bc - src_tc;
@@ -65,6 +66,7 @@ static int _copy_win(const WINDOW *src_w, WINDOW *dst_w, int src_tr,
     if (!src_w || !dst_w)
         return ERR;
 
+    src_bkgd_char = src_w->_bkgd & A_CHARTEXT;
     minchng = dst_w->_firstch;
     maxchng = dst_w->_lastch;
 
@@ -84,7 +86,7 @@ static int _copy_win(const WINDOW *src_w, WINDOW *dst_w, int src_tr,
         for (col = 0; col < xdiff; col++)
         {
             if ((*w1ptr) != (*w2ptr) &&
-                !((*w1ptr & A_CHARTEXT) == ' ' && _overlay))
+                !((*w1ptr & A_CHARTEXT) == src_bkgd_char && _overlay))
             {
                 *w2ptr = *w1ptr;
 
