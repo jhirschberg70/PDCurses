@@ -10,6 +10,39 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     const OK = 0;
     const SCREEN_ID = "screen";
     const TRUE = 1;
+
+    const BOX_DRAWING_MAP = new Map([
+      [0x005F, 'char-horiz-low'], // _
+      [0x007C, 'char-vert'],      // |
+      [0x23BA, 'char-s1'],        // ⎺
+      [0x23BB, 'char-s3'],        // ⎻
+      [0x23BC, 'char-s7'],        // ⎼
+      [0x23BD, 'char-s9'],        // ⎽            
+      [0x2500, 'char-horiz'],     // ─
+      [0x2502, 'char-vert'],      // │
+      [0x250C, 'char-tl'],        // ┌
+      [0x2510, 'char-tr'],        // ┐
+      [0x2514, 'char-bl'],        // └
+      [0x2518, 'char-br'],        // ┘
+      [0x251C, 'char-l-tee'],     // ├
+      [0x2524, 'char-r-tee'],     // ┤
+      [0x252C, 'char-t-tee'],     // ┬
+      [0x2534, 'char-b-tee'],     // ┴
+      [0x253C, 'char-cross'],     // ┼
+      [0x2550, 'char-dbl-horiz'], // ═
+      [0x2551, 'char-dbl-vert'],  // ║
+      [0x2554, 'char-dbl-tl'],    // ╔
+      [0x2557, 'char-dbl-tr'],    // ╗
+      [0x255A, 'char-dbl-bl'],    // ╚
+      [0x255D, 'char-dbl-br'],    // ╝
+      [0x256C, 'char-dbl-cross'], // ╬
+      [0x2588, 'char-block-full'],// █
+      [0x2580, 'char-block-top'], // ▀
+      [0x2584, 'char-block-bot'], // ▄
+      [0x2591, 'char-shade-light'],// ░
+      [0x2592, 'char-shade-med'],  // ▒
+      [0x2593, 'char-shade-dark']  // ▓
+    ]);
   
     const KEY_MAP = new Map([
       ["^@",         0x00],
@@ -233,9 +266,9 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     let throttleBeep = false;
 
     function createCells(columnIndex, numColumns, rowIndex, numRows) {
-      function cell(background, foreground) {
-        this.background = background;
-        this.foreground = foreground;
+      function cell(bg, fg) {
+        this.bg = bg;
+        this.fg = fg;
       }
 
       for (let row = rowIndex; row < numRows; ++row) {
@@ -243,17 +276,18 @@ if (typeof window.PDCurses === ("undefined" || null)) {
 
         for (let column = columnIndex; column < numColumns; ++column) {
           if (!screenBuffer[row][column]) {
-            const background = document.createElement("div");
-            const foreground = document.createElement("div");
+            const bg = document.createElement("div");
+            const fg = document.createElement("div");
 
-            background.classList.add("background");
-            background.style.setProperty("--column", column + 1);
-            background.style.setProperty("--row", row + 1);
+            bg.classList.add("cell-bg");
+            bg.style.setProperty("--column", column + 1);
+            bg.style.setProperty("--row", row + 1);
 
-            foreground.classList.add("foreground");
-            foreground.style.setProperty("--column", column + 1);
-            foreground.style.setProperty("--row", row + 1);
-            screenBuffer[row][column] = new cell(background, foreground);
+            fg.classList.add("cell-fg");
+            fg.maskClass = null;
+            fg.style.setProperty("--column", column + 1);
+            fg.style.setProperty("--row", row + 1);
+            screenBuffer[row][column] = new cell(bg, fg);
           }
         }
       }
@@ -299,7 +333,6 @@ if (typeof window.PDCurses === ("undefined" || null)) {
 
       let key = "";
 
-    
       if (PREVENT_DEFAULT.has(event.key)) event.preventDefault();
 
       // event.preventDefault();
@@ -330,7 +363,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
         console.log(inputBuffer);
       }
       else {
-        console.log("key " + key + " doesn't map to ASCII code");
+        console.log("key " + key + " doesn't map to code point");
       }
     }
 
@@ -424,15 +457,30 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     function PDC_gotoyx(row, col) {
       const currentColumn = parseInt(cursorElement.style.getPropertyValue("--column"));
       const currentRow = parseInt(cursorElement.style.getPropertyValue("--row"));
-      const background = screenBuffer[row][col].background.style.getPropertyValue("--background");
-      const color = screenBuffer[row][col].foreground.style.getPropertyValue("--color");
-      const textContent = screenBuffer[row][col].foreground.textContent;
+      const bgColor = screenBuffer[row][col].bg.style.getPropertyValue("--bg-color");
+      const fgColor = screenBuffer[row][col].fg.style.getPropertyValue("--fg-color");
+      const textContent = screenBuffer[row][col].fg.textContent;
+      const maskClass = screenBuffer[row][col].fg.maskClass;
+      
+      let classList = "cursor";
 
       cursorElement.style.setProperty("--column", col + 1);
       cursorElement.style.setProperty("--row", row + 1);
-      cursorElement.style.setProperty("--background", `${(background == "") ? "black" : background}`);
-      cursorElement.style.setProperty("--color", `${(color == "") ? "white" : color}`);
-      cursorElement.textContent = textContent;
+      
+      if (maskClass) {
+        classList += ` mask ${maskClass}`;
+        cursorElement.style.setProperty("--bg-color", fgColor);
+        cursorElement.style.setProperty("--fg-color", "transparent");
+        cursorElement.style.setProperty("--mask-bg-color", bgColor);
+        cursorElement.textContent = "";
+      } else {
+        cursorElement.style.setProperty("--bg-color", `${(bgColor == "") ? "white" : fgColor}`);
+        cursorElement.style.setProperty("--fg-color", `${(fgColor == "") ? "black" : bgColor}`);
+        cursorElement.textContent = textContent;
+      }
+      
+      cursorElement.className = classList;
+
       if ((currentColumn != col + 1) || (currentRow != row + 1)) {
         restartCursorAnimation();
       } 
@@ -478,8 +526,8 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       for (let row = rowIndex; row < numRows; ++row) {
         for (let column = columnIndex; column < numColumns; ++column) {
           if (screenBuffer[row][column]) {
-            screenBuffer[row][column].background.remove();
-            screenBuffer[row][column].foreground.remove();
+            screenBuffer[row][column].bg.remove();
+            screenBuffer[row][column].fg.remove();
           }
         }
       }
@@ -523,52 +571,77 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       // apply animation-name to none. Otherwise, it could potentially optimize it away.
       cursorElement.style.setProperty("animation-name", "none");
       cursorElement.offsetWidth;
-      cursorElement.style.setProperty("animation-name", "blink-cursor");
+      cursorElement.style.setProperty("animation-name", "blink");
     }
 
     function setCell(row, column, codePoint, color, background, blink, bold, underline, italic) {
-      if (screenBuffer[row][column]) {
-        screenBuffer[row][column].background.style.setProperty("--background", `${colorMap[background]}`);
-        screenBuffer[row][column].foreground.style.setProperty("--color", `${colorMap[color]}`);
-        screenBuffer[row][column].foreground.textContent = String.fromCodePoint(codePoint);
+      const cell = screenBuffer[row][column];
 
-        if (blink) {
-          screenBuffer[row][column].foreground.classList.add("blink-text");
-        } else {
-          screenBuffer[row][column].foreground.classList.remove("blink-text");
-        }
-
-        if (bold) {
-          screenBuffer[row][column].foreground.classList.add("bold");
-        } else {
-          screenBuffer[row][column].foreground.classList.remove("bold");
-        }
-
-        if (italic) {
-          screenBuffer[row][column].foreground.classList.add("italic");
-        } else {
-          screenBuffer[row][column].foreground.classList.remove("italic");
-        }
-
-        if (underline) {
-          screenBuffer[row][column].foreground.classList.add("underline");
-        } else {
-          screenBuffer[row][column].foreground.classList.remove("underline");
-        }
-
-        if (background == 0) {
-          screenBuffer[row][column].background.remove();
-        } else if (!(screenBuffer[row][column].background.isConnected)) {
-          screenElement.append(screenBuffer[row][column].background);
-        }
-
-        if (WHITESPACE.has(codePoint)) {
-          screenBuffer[row][column].foreground.remove();
-        } else if (!(screenBuffer[row][column].foreground.isConnected)) {
-          screenElement.append(screenBuffer[row][column].foreground);
-        }
-      } else {
+      if (!cell) {
         console.error(`error: tried to access row ${row} column ${column}`);
+        return;
+      }
+
+      const fg = cell.fg;
+      const bg = cell.bg;
+
+      // 1. Reset everything to a "Standard Text" state
+      let classList = "cell-fg"; // Clears all classes execept cell-fg
+      // fg.style.removeProperty("width"); // Reset wide-char width
+
+      // 2. Set Colors via CSS Variables
+      const fgColor = colorMap[color];
+      const bgColor = colorMap[background];
+
+      // 3. Handle Mask vs Text Logic
+      const maskClass = BOX_DRAWING_MAP.get(codePoint);
+
+      if (maskClass) {
+        fg.textContent = "";
+        fg.maskClass = maskClass;
+        classList += ` mask ${maskClass}`;
+        fg.style.setProperty("--mask-bg-color", fgColor);
+      } else {
+        const char = String.fromCodePoint(codePoint);
+        fg.textContent = char;
+        fg.maskClass = null;
+        classList += " text";
+
+        if (typeof wcwidth !== 'undefined' && wcwidth(char) > 1) {
+          classList  += " wide-char";
+        }
+      }
+        
+      bg.style.setProperty("--bg-color", bgColor);
+      fg.style.setProperty("--fg-color", fgColor);
+      
+      // Wide Character Support (like 0x26f7 Skier)
+      // if (typeof wcwidth !== 'undefined' && wcwidth(char) > 1) {
+      //   fg.classList.add("wide-char");
+      //   fg.style.setProperty("width", "2ch");
+      // }
+    
+      // 4. Apply Attributes (Blink, Bold, etc.)
+      if (blink) classList += " blink-text";
+      if (bold)  classList += " bold";
+      if (italic) classList += " italic";
+      if (underline) classList += " underline";
+
+      fg.className = classList;
+      
+      // 5. DOM Connectivity (Matching your original logic)
+      // Handle Background Visibility (0 is often 'transparent/black' in Curses)
+      if (background === 0) {
+        bg.remove();
+      } else if (!bg.isConnected) {
+        screenElement.append(bg);
+      }
+
+      // Handle Foreground Visibility (Whitespace vs Visible chars)
+      if (WHITESPACE.has(codePoint)) {
+        fg.remove();
+      } else if (!fg.isConnected) {
+        screenElement.append(fg);
       }
     }
 
