@@ -145,6 +145,7 @@ int cbreak(void)
         return ERR;
 
     SP->cbreak = TRUE;
+    SP->delaytenths = 0;
 
     return OK;
 }
