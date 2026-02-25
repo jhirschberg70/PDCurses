@@ -200,6 +200,7 @@ WINDOW *PDC_makenew(int nlines, int ncols, int begy, int begx)
     win->_begx = begx;
     win->_bkgd = ' ';     /* wrs 4/10/93 -- initialize background to blank */
     win->_clear = (bool) ((nlines == LINES) && (ncols == COLS));
+    win->_delayms = -1;   /* blocking mode by default */
     win->_bmarg = nlines - 1;
     win->_parx = win->_pary = -1;
 
@@ -355,17 +356,11 @@ WINDOW *subwin(WINDOW *orig, int nlines, int ncols, int begy, int begx)
     if (!win)
         return (WINDOW *)NULL;
 
-    /* initialize window variables */
+    /* initialize window variables -- subwindows share character storage
+       but have their own flags, per X/Open Curses spec */
 
     win->_attrs = orig->_attrs;
     win->_bkgd = orig->_bkgd;
-    win->_leaveit = orig->_leaveit;
-    win->_scroll = orig->_scroll;
-    win->_nodelay = orig->_nodelay;
-    win->_delayms = orig->_delayms;
-    win->_use_keypad = orig->_use_keypad;
-    win->_immed = orig->_immed;
-    win->_sync = orig->_sync;
     win->_pary = j;
     win->_parx = k;
     win->_parent = orig;
@@ -452,7 +447,6 @@ WINDOW *dupwin(WINDOW *win)
     new->_clear = win->_clear;
     new->_leaveit = win->_leaveit;
     new->_scroll = win->_scroll;
-    new->_nodelay = win->_nodelay;
     new->_delayms = win->_delayms;
     new->_use_keypad = win->_use_keypad;
     new->_tmarg = win->_tmarg;
@@ -461,6 +455,8 @@ WINDOW *dupwin(WINDOW *win)
     new->_pary = win->_pary;
     new->_parent = NULL;
     new->_bkgd = win->_bkgd;
+    new->_immed = win->_immed;
+    new->_sync = win->_sync;
     new->_flags = win->_flags & ~(_SUBWIN | _SUBPAD);
 
     return new;
@@ -542,7 +538,6 @@ WINDOW *resize_window(WINDOW *win, int nlines, int ncols)
     new->_clear = win->_clear;
     new->_leaveit = win->_leaveit;
     new->_scroll = win->_scroll;
-    new->_nodelay = win->_nodelay;
     new->_delayms = win->_delayms;
     new->_use_keypad = win->_use_keypad;
     new->_tmarg = (win->_tmarg > new->_maxy - 1) ? 0 : win->_tmarg;

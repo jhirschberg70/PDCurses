@@ -339,12 +339,7 @@ int wgetch(WINDOW *win)
     if (SP->delaytenths)
         timeout = 100 * SP->delaytenths;
     else
-        /* blocking */
-        if ((!win->_nodelay) && (!win->_delayms))
-            timeout = -1
-        /* use win->_delayms */;
-        else
-            timeout = win->_delayms;
+        timeout = win->_delayms;
     #else
     waitcount = 0;
 
@@ -408,7 +403,7 @@ int wgetch(WINDOW *win)
                 waitcount--;
             }
             else
-                if (win->_nodelay)
+                if (win->_delayms == 0)
                     return ERR;
 
             napms(50);  /* sleep for 1/20th second */

@@ -131,13 +131,10 @@ WINDOW *subpad(WINDOW *orig, int nlines, int ncols, int begy, int begx)
     if (!win)
         return (WINDOW *)NULL;
 
-    /* initialize window variables */
+    /* initialize window variables -- subpads share character storage
+       but have their own flags, per X/Open Curses spec */
 
     win->_attrs = orig->_attrs;
-    win->_leaveit = orig->_leaveit;
-    win->_scroll = orig->_scroll;
-    win->_nodelay = orig->_nodelay;
-    win->_use_keypad = orig->_use_keypad;
     win->_parent = orig;
 
     for (i = 0; i < nlines; i++)

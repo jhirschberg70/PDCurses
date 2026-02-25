@@ -290,7 +290,6 @@ typedef struct _win       /* definition of a window */
     bool  _clear;         /* causes clear at next refresh */
     bool  _leaveit;       /* leaves cursor where it is */
     bool  _scroll;        /* allows window scrolling */
-    bool  _nodelay;       /* input character wait flag */
     bool  _immed;         /* immediate update flag */
     bool  _sync;          /* synchronise window ancestors */
     bool  _use_keypad;    /* flags keypad key mode active */

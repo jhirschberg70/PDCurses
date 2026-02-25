@@ -90,7 +90,8 @@ int wgetnstr(WINDOW *win, char *str, int n)
 #else
     int ch, i, num, x, chars;
     char *p;
-    bool stop, oldecho, oldcbreak, oldnodelay;
+    bool stop, oldecho, oldcbreak;
+    int olddelayms;
 
     PDC_LOG(("wgetnstr() - called\n"));
 
@@ -105,11 +106,11 @@ int wgetnstr(WINDOW *win, char *str, int n)
 
     oldcbreak = SP->cbreak; /* remember states */
     oldecho = SP->echo;
-    oldnodelay = win->_nodelay;
+    olddelayms = win->_delayms;
 
     SP->echo = FALSE;       /* we do echo ourselves */
     cbreak();               /* ensure each key is returned immediately */
-    win->_nodelay = FALSE;  /* don't return -1 */
+    win->_delayms = -1;     /* block until input */
 
     wrefresh(win);
 
@@ -215,7 +216,7 @@ int wgetnstr(WINDOW *win, char *str, int n)
 
     SP->echo = oldecho;     /* restore old settings */
     SP->cbreak = oldcbreak;
-    win->_nodelay = oldnodelay;
+    win->_delayms = olddelayms;
 
     return OK;
 #endif
@@ -287,7 +288,8 @@ int wgetn_wstr(WINDOW *win, wint_t *wstr, int n)
 {
     int ch, i, num, x, chars;
     wint_t *p;
-    bool stop, oldecho, oldcbreak, oldnodelay;
+    bool stop, oldecho, oldcbreak;
+    int olddelayms;
 
     PDC_LOG(("wgetn_wstr() - called\n"));
 
@@ -302,11 +304,11 @@ int wgetn_wstr(WINDOW *win, wint_t *wstr, int n)
 
     oldcbreak = SP->cbreak; /* remember states */
     oldecho = SP->echo;
-    oldnodelay = win->_nodelay;
+    olddelayms = win->_delayms;
 
     SP->echo = FALSE;       /* we do echo ourselves */
     cbreak();               /* ensure each key is returned immediately */
-    win->_nodelay = FALSE;  /* don't return -1 */
+    win->_delayms = -1;     /* block until input */
 
     wrefresh(win);
 
@@ -412,7 +414,7 @@ int wgetn_wstr(WINDOW *win, wint_t *wstr, int n)
 
     SP->echo = oldecho;     /* restore old settings */
     SP->cbreak = oldcbreak;
-    win->_nodelay = oldnodelay;
+    win->_delayms = olddelayms;
 
     return OK;
 }

@@ -261,7 +261,10 @@ int nodelay(WINDOW *win, bool flag)
     if (!win)
         return ERR;
 
-    win->_nodelay = flag;
+    if (flag)
+        win->_delayms = 0;
+    else
+        win->_delayms = -1;
 
     return OK;
 }
@@ -325,27 +328,13 @@ void wtimeout(WINDOW *win, int delay)
 
     if (delay < 0)
     {
-        /* This causes a blocking read on the window, so turn on delay
-           mode */
-
-        win->_nodelay = FALSE;
-        win->_delayms = 0;
-    }
-    else if (!delay)
-    {
-        /* This causes a non-blocking read on the window, so turn off
-           delay mode */
-
-        win->_nodelay = TRUE;
-        win->_delayms = 0;
+        /* This causes a blocking read on the window */
+        win->_delayms = -1;
     }
     else
     {
         /* This causes the read on the window to delay for the number of
-           milliseconds. Also forces the window into non-blocking read
-           mode */
-
-        /*win->_nodelay = TRUE;*/
+           milliseconds or until a character is ready, whichever comes first. */
         win->_delayms = delay;
     }
 }
@@ -398,7 +387,7 @@ bool is_nodelay(const WINDOW *win)
     if (!win)
         return FALSE;
 
-    return win->_nodelay;
+    return (win->_delayms == 0);
 }
 
 bool is_notimeout(const WINDOW *win)
