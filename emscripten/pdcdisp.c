@@ -28,18 +28,16 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
 
     attr_t sysattrs = SP->termattrs;
 
-    chtype codePoint = 0;
-    
-    short background = COLOR_BLACK;
-    short color = COLOR_WHITE;
-
-    bool blink = FALSE;
-    bool bold = FALSE;
-    bool italic = FALSE;
-    bool underline = FALSE;
-
     for (int i = 0; i < len; ++i) {
-        codePoint = srcp[i] & A_CHARTEXT;
+        bool blink = FALSE;
+        bool bold = FALSE;
+        bool italic = FALSE;
+        bool underline = FALSE;
+        
+        chtype codePoint = srcp[i] & A_CHARTEXT;
+
+        short background = COLOR_BLACK;
+        short color = COLOR_WHITE;
 
         if (srcp[i] & A_ALTCHARSET && !(srcp[i] & 0xff80))
             codePoint = acs_map[codePoint & 0x7f];
