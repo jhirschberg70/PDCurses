@@ -11,39 +11,6 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     const SCREEN_ID = "screen";
     const TRUE = 1;
 
-    const BOX_DRAWING_MAP = new Map([
-      [0x005F, 'char-horiz-low'], // _
-      [0x007C, 'char-vert'],      // |
-      [0x23BA, 'char-s1'],        // ⎺
-      [0x23BB, 'char-s3'],        // ⎻
-      [0x23BC, 'char-s7'],        // ⎼
-      [0x23BD, 'char-s9'],        // ⎽            
-      [0x2500, 'char-horiz'],     // ─
-      [0x2502, 'char-vert'],      // │
-      [0x250C, 'char-tl'],        // ┌
-      [0x2510, 'char-tr'],        // ┐
-      [0x2514, 'char-bl'],        // └
-      [0x2518, 'char-br'],        // ┘
-      [0x251C, 'char-l-tee'],     // ├
-      [0x2524, 'char-r-tee'],     // ┤
-      [0x252C, 'char-t-tee'],     // ┬
-      [0x2534, 'char-b-tee'],     // ┴
-      [0x253C, 'char-cross'],     // ┼
-      [0x2550, 'char-dbl-horiz'], // ═
-      [0x2551, 'char-dbl-vert'],  // ║
-      [0x2554, 'char-dbl-tl'],    // ╔
-      [0x2557, 'char-dbl-tr'],    // ╗
-      [0x255A, 'char-dbl-bl'],    // ╚
-      [0x255D, 'char-dbl-br'],    // ╝
-      [0x256C, 'char-dbl-cross'], // ╬
-      [0x2588, 'char-block-full'],// █
-      [0x2580, 'char-block-top'], // ▀
-      [0x2584, 'char-block-bot'], // ▄
-      [0x2591, 'char-shade-light'],// ░
-      [0x2592, 'char-shade-med'],  // ▒
-      [0x2593, 'char-shade-dark']  // ▓
-    ]);
-  
     const KEY_MAP = new Map([
       ["^@",         0x00],
       ["^a",         0x01],
@@ -259,35 +226,26 @@ if (typeof window.PDCurses === ("undefined" || null)) {
 
     let beepContext = null;
     let cursorElement = null;;
-    let numColumns = null;
+    let numCols = null;
     let numRows = null;
     let observer = null;
     let screenElement = null;
     let throttleBeep = false;
 
-    function createCells(columnIndex, numColumns, rowIndex, numRows) {
-      function cell(bg, fg) {
-        this.bg = bg;
-        this.fg = fg;
-      }
-
+    function createCells(colIndex, numCols, rowIndex, numRows) {
       for (let row = rowIndex; row < numRows; ++row) {
         screenBuffer[row] = screenBuffer[row] ?? [];
 
-        for (let column = columnIndex; column < numColumns; ++column) {
-          if (!screenBuffer[row][column]) {
-            const bg = document.createElement("div");
-            const fg = document.createElement("div");
+        for (let col = colIndex; col < numCols; ++col) {
+          if (!screenBuffer[row][col]) {
+            const cell = document.createElement("div");
 
-            bg.classList.add("cell-bg");
-            bg.style.setProperty("--column", column + 1);
-            bg.style.setProperty("--row", row + 1);
-
-            fg.classList.add("cell-fg");
-            fg.maskClass = null;
-            fg.style.setProperty("--column", column + 1);
-            fg.style.setProperty("--row", row + 1);
-            screenBuffer[row][column] = new cell(bg, fg);
+            cell.className = "cell";
+            cell.boxDrawing = false;
+            cell.style.setProperty("--col", col + 1);
+            cell.style.setProperty("--row", row + 1);
+            cell.underline = false;
+            screenBuffer[row][col] = cell;
           }
         }
       }
@@ -313,7 +271,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     function getGridDimensions(element) {
       const { chHeight, chWidth } = getChDimensions(element);
 
-      return { columns: Math.floor(window.visualViewport.width / chWidth), rows: Math.floor(window.visualViewport.height / chHeight) };
+      return { cols: Math.floor(window.visualViewport.width / chWidth), rows: Math.floor(window.visualViewport.height / chHeight) };
     }
 
     function initEventHandlers() {
@@ -437,7 +395,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
         return;
       }
 
-      return numColumns;
+      return numCols;
     }
 
     function PDC_get_key() {
@@ -455,35 +413,35 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     }
 
     function PDC_gotoyx(row, col) {
-      const currentColumn = parseInt(cursorElement.style.getPropertyValue("--column"));
+      const cell = screenBuffer[row][col];
+      const currentCol = parseInt(cursorElement.style.getPropertyValue("--col"));
       const currentRow = parseInt(cursorElement.style.getPropertyValue("--row"));
-      const bgColor = screenBuffer[row][col].bg.style.getPropertyValue("--bg-color");
-      const fgColor = screenBuffer[row][col].fg.style.getPropertyValue("--fg-color");
-      const textContent = screenBuffer[row][col].fg.textContent;
-      const maskClass = screenBuffer[row][col].fg.maskClass;
-      
-      let classList = "cursor";
+      const bgColor = cell.style.getPropertyValue("--bg-color");
+      const fgColor = cell.style.getPropertyValue("--fg-color");
+      const textContent = cell.textContent;
+      const boxDrawing = cell.boxDrawing;
+      const underline = cell.underline;
 
-      cursorElement.style.setProperty("--column", col + 1);
+      let classList = "cursor blink";
+
+      cursorElement.style.setProperty("--col", col + 1);
       cursorElement.style.setProperty("--row", row + 1);
-      
-      if (maskClass) {
-        classList += ` mask ${maskClass}`;
-        cursorElement.style.setProperty("--bg-color", fgColor);
-        cursorElement.style.setProperty("--fg-color", "transparent");
-        cursorElement.style.setProperty("--mask-bg-color", bgColor);
-        cursorElement.textContent = "";
-      } else {
-        cursorElement.style.setProperty("--bg-color", `${(bgColor == "") ? "white" : fgColor}`);
-        cursorElement.style.setProperty("--fg-color", `${(fgColor == "") ? "black" : bgColor}`);
-        cursorElement.textContent = textContent;
+
+      if (boxDrawing) {
+        classList += ` box-drawing`;
       }
-      
+
+      cursorElement.textContent = textContent;
+
+      if (underline) classList += " underline char-underline";
+
+      cursorElement.style.setProperty("--bg-color", `${(bgColor == "") ? "white" : fgColor}`);
+      cursorElement.style.setProperty("--fg-color", `${(fgColor == "") ? "black" : bgColor}`);
       cursorElement.className = classList;
 
-      if ((currentColumn != col + 1) || (currentRow != row + 1)) {
+      if ((currentCol != col + 1) || (currentRow != row + 1)) {
         restartCursorAnimation();
-      } 
+      }
     }
 
     function PDC_scr_close() {
@@ -506,13 +464,13 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       
       screenElement.showModal();
 
-      ({ columns: numColumns, rows: numRows } = getGridDimensions(screenElement));
-      screenElement.style.setProperty("--columns", numColumns);
+      ({ cols: numCols, rows: numRows } = getGridDimensions(screenElement));
+      screenElement.style.setProperty("--cols", numCols);
       screenElement.style.setProperty("--rows", numRows);
 
-      console.log(`numRows:${numRows} numColumns:${numColumns}`);
+      console.log(`numRows:${numRows} numCols:${numCols}`);
 
-      createCells(0, numColumns, 0, numRows);
+      createCells(0, numCols, 0, numRows);
 
       PDC_gotoyx(0, 0);
       screenElement.append(cursorElement);
@@ -522,47 +480,46 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       return OK;
     }
 
-    function removeCells(columnIndex, rowIndex) {
+    function removeCells(colIndex, rowIndex) {
       for (let row = rowIndex; row < numRows; ++row) {
-        for (let column = columnIndex; column < numColumns; ++column) {
-          if (screenBuffer[row][column]) {
-            screenBuffer[row][column].bg.remove();
-            screenBuffer[row][column].fg.remove();
+        for (let col = colIndex; col < numCols; ++col) {
+          if (screenBuffer[row][col]) {
+            screenBuffer[row][col].remove();
           }
         }
       }
     }
 
     function resizeHandler() {
-      const { columns: newColumns, rows: newRows } = getGridDimensions(screenElement);
+      const { cols: newCols, rows: newRows } = getGridDimensions(screenElement);
 
       const screenComputedStyle = window.getComputedStyle(screenElement);
 
-      if ((newColumns != numColumns) || (newRows != numRows)) {
-        screenElement.style.setProperty("--columns", numColumns);
-        screenElement.style.setProperty("--rows", numRows);
+      if ((newCols != numCols) || (newRows != numRows)) {
+        screenElement.style.setProperty("--cols", newCols);
+        screenElement.style.setProperty("--rows", newRows);
 
         if (newRows < numRows) {
           removeCells(0, newRows);
         }
 
-        if (newColumns < numColumns) {
-          removeCells(newColumns, 0);
+        if (newCols < numCols) {
+          removeCells(newCols, 0);
         }
 
         if (newRows > numRows) {
-          createCells(0, numColumns, numRows, newRows);
+          createCells(0, numCols, numRows, newRows);
         }
 
-        if (newColumns > numColumns) {
-          createCells(numColumns, newColumns, 0, newRows);
+        if (newCols > numCols) {
+          createCells(numCols, newCols, 0, newRows);
         }
 
-        numColumns = newColumns;
+        numCols = newCols;
         numRows = newRows;
 
         inputBuffer.unshift(KEY_RESIZE)
-        console.log(`resize numRows:${numRows} numColumns:${numColumns}`);
+        console.log(`resize numRows:${numRows} numCols:${numCols}`);
       }
     }
 
@@ -574,74 +531,51 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       cursorElement.style.setProperty("animation-name", "blink");
     }
 
-    function setCell(row, column, codePoint, color, background, blink, bold, underline, italic) {
-      const cell = screenBuffer[row][column];
+    function setCell(row, col, codePoint, color, background, blink, bold, underline, italic) {
+      const cell = screenBuffer[row][col];
 
       if (!cell) {
-        console.error(`error: tried to access row ${row} column ${column}`);
+        console.error(`error: tried to access row ${row} col ${col}`);
         return;
       }
 
-      const fg = cell.fg;
-      const bg = cell.bg;
+     
+      cell.boxDrawing = false;
+      cell.textContent = "";
+      cell.underline = false;
 
-      // 1. Reset everything to a "Standard Text" state
-      let classList = "cell-fg"; // Clears all classes execept cell-fg
-      // fg.style.removeProperty("width"); // Reset wide-char width
+      let classList = "cell"; // Clears all classes execept cell
 
-      // 2. Set Colors via CSS Variables
       const fgColor = colorMap[color];
       const bgColor = colorMap[background];
 
-      // 3. Handle Mask vs Text Logic
-      const maskClass = BOX_DRAWING_MAP.get(codePoint);
+      if ((codePoint >= 0x2500) && (codePoint <= 0x257F)) {
+        classList += ` box-drawing`;
+        cell.boxDrawing = true;
+      }
 
-      if (maskClass) {
-        fg.textContent = "";
-        fg.maskClass = maskClass;
-        classList += ` mask ${maskClass}`;
-        fg.style.setProperty("--mask-bg-color", fgColor);
-      } else {
-        const char = String.fromCodePoint(codePoint);
-        fg.textContent = char;
-        fg.maskClass = null;
-        classList += " text";
+      const char = String.fromCodePoint(codePoint);
+      cell.textContent = char;
 
-        if (typeof wcwidth !== 'undefined' && wcwidth(char) > 1) {
-          classList  += " wide-char";
-        }
+      if (typeof wcwidth !== 'undefined' && wcwidth(char) > 1) {
+        classList  += " wide-char";
       }
         
-      bg.style.setProperty("--bg-color", bgColor);
-      fg.style.setProperty("--fg-color", fgColor);
-      
-      // Wide Character Support (like 0x26f7 Skier)
-      // if (typeof wcwidth !== 'undefined' && wcwidth(char) > 1) {
-      //   fg.classList.add("wide-char");
-      //   fg.style.setProperty("width", "2ch");
-      // }
+      cell.style.setProperty("--bg-color", bgColor);
+      cell.style.setProperty("--fg-color", fgColor);
     
-      // 4. Apply Attributes (Blink, Bold, etc.)
       if (blink) classList += " blink-text";
       if (bold)  classList += " bold";
       if (italic) classList += " italic";
-      if (underline) classList += " underline";
+      if (underline) { classList += " underline"; cell.underline = true; }
 
-      fg.className = classList;
+      cell.className = classList;
       
-      // 5. DOM Connectivity (Matching your original logic)
-      // Handle Background Visibility (0 is often 'transparent/black' in Curses)
-      if (background === 0) {
-        bg.remove();
-      } else if (!bg.isConnected) {
-        screenElement.append(bg);
-      }
-
       // Handle Foreground Visibility (Whitespace vs Visible chars)
-      if (WHITESPACE.has(codePoint)) {
-        fg.remove();
-      } else if (!fg.isConnected) {
-        screenElement.append(fg);
+      if ((WHITESPACE.has(codePoint)) && (background == 0) && (!underline)) {
+        cell.remove();
+      } else if (!cell.isConnected) {
+        screenElement.append(cell);
       }
     }
 
