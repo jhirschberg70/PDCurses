@@ -241,7 +241,6 @@ if (typeof window.PDCurses === ("undefined" || null)) {
             const cell = document.createElement("div");
 
             cell.className = "cell";
-            cell.boxDrawing = false;
             cell.style.setProperty("--col", col + 1);
             cell.style.setProperty("--row", row + 1);
             cell.underline = false;
@@ -419,7 +418,6 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       const bgColor = cell.style.getPropertyValue("--bg-color");
       const fgColor = cell.style.getPropertyValue("--fg-color");
       const textContent = cell.textContent;
-      const boxDrawing = cell.boxDrawing;
       const underline = cell.underline;
 
       let classList = "cursor blink";
@@ -427,13 +425,9 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       cursorElement.style.setProperty("--col", col + 1);
       cursorElement.style.setProperty("--row", row + 1);
 
-      if (boxDrawing) {
-        classList += ` box-drawing`;
-      }
-
       cursorElement.textContent = textContent;
 
-      if (underline) classList += " underline char-underline";
+      if (underline) classList += " underline";
 
       cursorElement.style.setProperty("--bg-color", `${(bgColor == "") ? "white" : fgColor}`);
       cursorElement.style.setProperty("--fg-color", `${(fgColor == "") ? "black" : bgColor}`);
@@ -539,20 +533,13 @@ if (typeof window.PDCurses === ("undefined" || null)) {
         return;
       }
 
-     
-      cell.boxDrawing = false;
       cell.textContent = "";
       cell.underline = false;
 
       let classList = "cell"; // Clears all classes execept cell
 
-      const fgColor = colorMap[color];
       const bgColor = colorMap[background];
-
-      if ((codePoint >= 0x2500) && (codePoint <= 0x257F)) {
-        classList += ` box-drawing`;
-        cell.boxDrawing = true;
-      }
+      const fgColor = colorMap[color];
 
       const char = String.fromCodePoint(codePoint);
       cell.textContent = char;

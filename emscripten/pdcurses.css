@@ -30,7 +30,7 @@
   --fg-color: #fff;
   --font-family: monospace;
   --font-size: 16;
-  --line-height: 1.2;
+  --line-height: 1;
   --row-size: 1lh;
 }
 
@@ -66,15 +66,6 @@ html {
   position: relative;
   width: 100%;
   z-index: calc(-1 * (var(--row) * var(--cols) + var(--col)));
-}
-
-.cell.box-drawing {
-  overflow: visible;
-  font-size: calc(var(--font-size) * var(--bd-scale, 1.1) * 1px);
-  line-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .cursor {
