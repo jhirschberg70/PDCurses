@@ -68,6 +68,13 @@ html {
   z-index: calc(-1 * (var(--row) * var(--cols) + var(--col)));
 }
 
+/* Wide (double-column) characters span two grid columns. The z-index
+   ensures the wide-char cell renders above the background cell that
+   PDCurses writes to the continuation column. */
+.wide-char {
+  grid-column: var(--col) / span 2;
+}
+
 .cursor {
   background-color: var(--bg-color);
   color: var(--fg-color);

@@ -73,3 +73,7 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
         EM_ASM(PDCurses.setCell($0, $1, $2, $3, $4, $5, $6, $7, $8), lineno, x + i, codePoint, color, background, blink, bold, underline, italic);
     }
 }
+
+int PDC_wcwidth(wchar_t ch) {
+    return EM_ASM_INT(return PDCurses.PDC_wcwidth($0), ch);
+}

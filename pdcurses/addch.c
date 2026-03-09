@@ -224,6 +224,57 @@ int waddch(WINDOW *win, const chtype ch)
 
         text |= attr;
 
+#ifdef PDC_WIDE
+        /* X/Open compliance: overwriting any cell that is part of a
+           multi-column character replaces the entire multi-column
+           character with background characters. */
+
+        /* Case 1: target cell is the right half of a wide char at x-1;
+           blank the left half. */
+        if (x > 0 && PDC_wcwidth((wchar_t)(win->_y[y][x - 1] & A_CHARTEXT)) == 2)
+        {
+            if (win->_firstch[y] == _NO_CHANGE)
+                win->_firstch[y] = win->_lastch[y] = x - 1;
+            else if (x - 1 < win->_firstch[y])
+                win->_firstch[y] = x - 1;
+            win->_y[y][x - 1] = win->_bkgd;
+        }
+
+        /* Case 2: target cell is the left half of an existing wide char;
+           blank the right half at x+1. */
+        if (PDC_wcwidth((wchar_t)(win->_y[y][x] & A_CHARTEXT)) == 2
+            && x + 1 < win->_maxx)
+        {
+            if (win->_firstch[y] == _NO_CHANGE)
+                win->_firstch[y] = win->_lastch[y] = x + 1;
+            else if (x + 1 > win->_lastch[y])
+                win->_lastch[y] = x + 1;
+            win->_y[y][x + 1] = win->_bkgd;
+        }
+
+        /* Case 3: the new character being written is itself wide.
+           If there is no room for the right half, replace the character
+           with the background rather than leave a half-rendered wide char
+           in the last column. Otherwise, fill x+1 with the background and
+           set a flag so the cursor advances an extra column after the write,
+           skipping the continuation cell as required by X/Open. */
+        bool wide_char_written = FALSE;
+        if (PDC_wcwidth((wchar_t)(text & A_CHARTEXT)) == 2)
+        {
+            if (x + 1 >= win->_maxx)
+                text = win->_bkgd;
+            else
+            {
+                if (win->_firstch[y] == _NO_CHANGE)
+                    win->_firstch[y] = win->_lastch[y] = x + 1;
+                else if (x + 1 > win->_lastch[y])
+                    win->_lastch[y] = x + 1;
+                win->_y[y][x + 1] = win->_bkgd;
+                wide_char_written = TRUE;
+            }
+        }
+#endif
+
         /* Only change _firstch/_lastch if the character to be added is
            different from the character/attribute that is already in
            that position in the window. */
@@ -259,6 +310,24 @@ int waddch(WINDOW *win, const chtype ch)
                 }
             }
         }
+#ifdef PDC_WIDE
+        /* Skip the continuation cell for wide characters. */
+        if (wide_char_written && ++x >= win->_maxx)
+        {
+            x = 0;
+
+            if (++y > win->_bmarg)
+            {
+                y--;
+
+                if (wscrl(win, 1) == ERR)
+                {
+                    PDC_sync(win);
+                    return ERR;
+                }
+            }
+        }
+#endif
     }
 
     win->_curx = x;

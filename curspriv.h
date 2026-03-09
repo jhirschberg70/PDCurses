@@ -106,6 +106,9 @@ void    PDC_sync(WINDOW *);
 int     PDC_mbtowc(wchar_t *, const char *, size_t);
 size_t  PDC_mbstowcs(wchar_t *, const char *, size_t);
 size_t  PDC_wcstombs(char *, const wchar_t *, size_t);
+#ifdef __EMSCRIPTEN__
+int     PDC_wcwidth(wchar_t ch);
+#endif
 #endif
 
 #ifdef PDCDEBUG

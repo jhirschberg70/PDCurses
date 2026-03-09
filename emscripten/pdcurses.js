@@ -220,15 +220,18 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       0xFEFF
     ]);
   
+    const charWidthMap = new Map();
     const colorMap = [];
     const inputBuffer = [];
     const screenBuffer = [];
 
     let beepContext = null;
+    let charWidthCtx = null;
     let cursorElement = null;;
     let numCols = null;
     let numRows = null;
     let observer = null;
+    let refCharWidth = null;
     let screenElement = null;
     let throttleBeep = false;
 
@@ -455,7 +458,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       screenElement.id = SCREEN_ID;
 
       document.body.append(screenElement);
-      
+
       screenElement.showModal();
 
       ({ cols: numCols, rows: numRows } = getGridDimensions(screenElement));
@@ -472,6 +475,26 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       initEventHandlers();
 
       return OK;
+    }
+
+    function PDC_wcwidth(codePoint) {
+      if (charWidthMap.has(codePoint)) return charWidthMap.get(codePoint);
+
+      // Lazily initialize on first call, after the screen modal is shown and
+      // the font is fully computed. Capturing the font at PDC_scr_open() time
+      // is too early -- the dialog isn't visible yet and getComputedStyle()
+      // may return a fallback or empty font string.
+      if (!charWidthCtx) {
+        charWidthCtx = document.createElement('canvas').getContext('2d');
+        charWidthCtx.font = getComputedStyle(screenElement).font;
+        refCharWidth = charWidthCtx.measureText("0").width;
+      }
+
+      const charWidth = charWidthCtx.measureText(String.fromCodePoint(codePoint)).width / refCharWidth > 1.4 ? 2 : 1;
+
+      charWidthMap.set(codePoint, charWidth);
+
+      return charWidth;
     }
 
     function removeCells(colIndex, rowIndex) {
@@ -544,7 +567,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       const char = String.fromCodePoint(codePoint);
       cell.textContent = char;
 
-      if (typeof wcwidth !== 'undefined' && wcwidth(char) > 1) {
+      if (PDC_wcwidth(codePoint) > 1) {
         classList  += " wide-char";
       }
         
@@ -578,6 +601,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       PDC_gotoyx: PDC_gotoyx,
       PDC_scr_close: PDC_scr_close,
       PDC_scr_open: PDC_scr_open,
+      PDC_wcwidth: PDC_wcwidth,
       setCell: setCell
     }
   })();
