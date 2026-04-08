@@ -6,53 +6,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <link href="pdcurses.css" rel="stylesheet" />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg-color: rgba(0, 0, 0, 1.0);
+        --col-size: 1ch;
+        --font-family: monospace;
+        --font-size: 16;
+        --line-height: 1;
+        --row-size: 1lh;
+      }
+
+      body {
+        background-color: var(--bg-color);
+        /* font-family: var(--font-family); uncomment to use google fonts*/
+      }
+
+      button {
+        background-color: blue;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        cursor: pointer;
+        font-size: 1rem;
+        outline: none;
+        padding: 0.5em 1em;
+        margin: 0.5em;
+
+        &:hover,
+        &:focus {
+          background-color: darkblue;
+          outline: solid 2px white;
+        }
+
+        html {
+          height: 100%;
+          width: 100%;
+        }
+      }
+    </style>
     <script src="pdcurses.js"></script>
     <script>
-      function documentReady() {
+      function loadScript(scriptName) {
         return new Promise((resolve, reject) => {
-          if (document.readyState === "complete") {
-            resolve(true);
-          } else {
-            function listener() {
-              this.clearTimeout(timeout);
-              window.removeEventListener("load", listener, true);
-              resolve(true);
-            }
+          const script = document.createElement("script");
+          script.src = scriptName;
 
-            const timeout = setTimeout(() => {
-              window.removeEventListener("load", listener, true);
-              reject(new Error("document failed to load"));
-            }, 5000);
-
-            window.addEventListener("load", listener, true);
+          function loader() {
+            clearTimeout(timeout);
+            script.removeEventListener("load", loader);
+            script.removeEventListener("error", errorHandler);
+            resolve();
           }
+
+          function errorHandler() {
+            clearTimeout(timeout);
+            script.removeEventListener("load", loader);
+            script.removeEventListener("error", errorHandler);
+            reject(new Error(`Failed to load script: ${scriptName}`));
+          }
+
+          script.addEventListener("load", loader);
+          script.addEventListener("error", errorHandler);
+
+          const timeout = setTimeout(() => {
+            script.removeEventListener("load", loader);
+            script.removeEventListener("error", errorHandler);
+            reject(new Error(`Failed to load script: ${scriptName}`));
+          }, 5000);
+          document.head.appendChild(script);
         });
       }
 
-      self.Module = {
-        onRuntimeInitialized: (async () => {
-          console.log("emscripten ready")
-          const ready = await documentReady().catch((error) => { console.error(error); });
+      let modules = new Map();
 
-          if (ready) {
-            console.log("document ready");
-            console.log("calling main...")
-            Module["callMain"]();
+      window.addEventListener("click", async (event) => {
+        if (event.target instanceof HTMLButtonElement) {
+          const scriptName = event.target.getAttribute("data-script");
+          if (!modules.has(scriptName)) {
+            await loadScript(scriptName).catch((error) => { console.error(error); });
+            const module = await Module();
+            modules.set(scriptName, module);
           }
-        }),
-        print: (text) => { console.log(text); },
-        printErr: (text) => { console.error(text); }
-      }
 
-      window.addEventListener("load", () => {
-        window.addEventListener("click", (event) => {
-          if (event.target instanceof HTMLButtonElement) {
-            const script = document.createElement("script");
-            const scriptName = event.target.getAttribute("data-script");
-            script.src = scriptName;
-            document.head.append(script);
-          }
-        });
+          modules.get(scriptName).callMain();
+        }
       });
     </script>
   </head>
