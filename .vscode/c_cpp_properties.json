@@ -1,29 +1,31 @@
 {
     "configurations": [
         {
-            "name": "Linux",
+            "compilerPath": "/usr/bin/clang",
+            "cppStandard": "c++17",
+            "cStandard": "c17",
+            "defines": [],
             "includePath": [
-                "${workspaceFolder}/**",
+                "${workspaceFolder}/",
                 "/usr/include/**"
             ],
-            "defines": [],
-            "compilerPath": "/usr/bin/clang",
-            "cStandard": "c17",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "linux-clang-x64"
+            "intelliSenseMode": "linux-clang-x64",
+            "name": "Linux"
         },
         {
-            "name": "Emscripten",
+            "compilerPath": " \"${EMSDK}/upstream/bin/clang\"",
+            "cppStandard": "c++17",
+            "cStandard": "c17",
+            "defines": [
+                "__EMSCRIPTEN__"
+            ],
             "includePath": [
                 "${workspaceFolder}",
                 "${workspaceFolder}/emscripten",
                 "${EMSDK}/upstream/emscripten/system/**"
             ],
-            "defines": [],
-            "compilerPath": " \"${EMSDK}/upstream/bin/clang\"",
-            "cStandard": "c17",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "linux-clang-x64"
+            "intelliSenseMode": "linux-clang-x64",
+            "name": "Emscripten"
         }
     ],
     "version": 4
