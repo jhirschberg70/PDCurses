@@ -15,7 +15,8 @@
         {
             "name": "Emscripten",
             "includePath": [
-                "${workspaceFolder}/**",
+                "${workspaceFolder}",
+                "${workspaceFolder}/emscripten",
                 "${EMSDK}/upstream/emscripten/system/**"
             ],
             "defines": [],

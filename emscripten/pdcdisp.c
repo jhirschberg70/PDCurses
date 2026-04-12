@@ -1,7 +1,7 @@
 /* PDCurses */
 
 #include "pdcemscripten.h"
-#include "../common/acsuni.h"
+#include "common/acsuni.h"
 
 void PDC_doupdate(void)
 {
