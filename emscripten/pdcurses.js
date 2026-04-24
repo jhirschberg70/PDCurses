@@ -1,8 +1,8 @@
 if (typeof window.PDCurses === ("undefined" || null)) {
-  
+
   window.PDCurses = (() => {
     "use strict";
-  
+
     const CURSOR_ID = "cursor";
     const ERR = -1;
     const FALSE = 0;
@@ -166,7 +166,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       ["PageDown",   0x153], // KEY_NPAGE
       ["End",        0x168]  // KEY_END
     ]);
-      
+
     const PREVENT_DEFAULT = new Set([
       "Escape"
     ]);
@@ -219,7 +219,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       0x200B,
       0xFEFF
     ]);
-  
+
     const charWidthMap = new Map();
     const colorMap = [];
     const inputBuffer = [];
@@ -363,7 +363,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
             if (timeoutId) clearTimeout(timeoutId);
             resolve(true);
           }
-          
+
           let timeoutId = null;
 
           addEventListener("inputBufferedEvent", listener, { once: true });
@@ -568,19 +568,20 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       cell.textContent = char;
 
       if (PDC_wcwidth(codePoint) > 1) {
-        classList  += " wide-char";
+        classList += " wide-char";
       }
-        
+
       cell.style.setProperty("--bg-color", bgColor);
       cell.style.setProperty("--fg-color", fgColor);
-    
+
       if (blink) classList += " blink-text";
-      if (bold)  classList += " bold";
+      if (bold) classList += " bold";
       if (italic) classList += " italic";
       if (underline) { classList += " underline"; cell.underline = true; }
+      if ((codePoint >= 0x2500) && (codePoint <= 0x257F)) classList += " box-drawing";
 
       cell.className = classList;
-      
+
       // Handle Foreground Visibility (Whitespace vs Visible chars)
       if ((WHITESPACE.has(codePoint)) && (background == 0) && (!underline)) {
         cell.remove();

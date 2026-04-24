@@ -66,6 +66,10 @@ html {
   position: relative;
   width: 100%;
   z-index: calc(-1 * (var(--row) * var(--cols) + var(--col)));
+
+  &.box-drawing {
+    overflow: hidden;
+  }
 }
 
 /* Wide (double-column) characters span two grid columns. The z-index
