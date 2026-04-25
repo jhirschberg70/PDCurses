@@ -104,8 +104,8 @@ html {
   font-family: var(--font-family);
   font-size: calc(var(--font-size) * 1px);
   gap: 0;
-  grid-template-columns: repeat(var(--cols), var(--col-size));
-  grid-template-rows: repeat(var(--rows), var(--row-size));
+  grid-auto-columns: var(--col-size);
+  grid-auto-rows: var(--row-size);
   height: 100dvh;
   left: 0;
   line-height: var(--line-height);
