@@ -57,26 +57,28 @@
           const script = document.createElement("script");
           script.src = scriptName;
 
-          function loader() {
+          function loaded() {
+            function removeListeners() {
+              script.removeEventListener("load", loaded);
+              script.removeEventListener("error", errorHandler);
+            }
+
             clearTimeout(timeout);
-            script.removeEventListener("load", loader);
-            script.removeEventListener("error", errorHandler);
+            removeListeners();
             resolve();
           }
 
           function errorHandler() {
             clearTimeout(timeout);
-            script.removeEventListener("load", loader);
-            script.removeEventListener("error", errorHandler);
+            removeListeners();
             reject(new Error(`Failed to load script: ${scriptName}`));
           }
 
-          script.addEventListener("load", loader);
+          script.addEventListener("load", loaded);
           script.addEventListener("error", errorHandler);
 
           const timeout = setTimeout(() => {
-            script.removeEventListener("load", loader);
-            script.removeEventListener("error", errorHandler);
+            removeListeners();
             reject(new Error(`Failed to load script: ${scriptName}`));
           }, 5000);
           document.head.appendChild(script);
