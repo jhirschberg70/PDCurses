@@ -57,12 +57,12 @@
           const script = document.createElement("script");
           script.src = scriptName;
 
-          function loaded() {
-            function removeListeners() {
-              script.removeEventListener("load", loaded);
-              script.removeEventListener("error", errorHandler);
-            }
+          function removeListeners() {
+            script.removeEventListener("load", loaded);
+            script.removeEventListener("error", errorHandler);
+          }
 
+          function loaded() {
             clearTimeout(timeout);
             removeListeners();
             resolve();
