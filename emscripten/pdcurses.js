@@ -7,6 +7,23 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     const ERR = -1;
     const FALSE = 0;
     const KEY_RESIZE = 0x222;
+    const KEY_MOUSE           = 0x21b;
+    const PDC_BUTTON_SHIFT    = 0x0008;
+    const PDC_BUTTON_CONTROL  = 0x0010;
+    const PDC_BUTTON_ALT      = 0x0020;
+    const BUTTON_RELEASED     = 0x0000;
+    const BUTTON_PRESSED      = 0x0001;
+    const BUTTON_CLICKED      = 0x0002;
+    const BUTTON_DOUBLE_CLICKED = 0x0003;
+    const BUTTON_MOVED        = 0x0005;
+    const PDC_MOUSE_MOVED     = 0x0008;
+    const PDC_MOUSE_WHEEL_UP  = 0x0020;
+    const PDC_MOUSE_WHEEL_DOWN = 0x0040;
+    const PDC_MOUSE_WHEEL_LEFT = 0x0080;
+    const PDC_MOUSE_WHEEL_RIGHT = 0x0100;
+    const PDC_KEY_MODIFIER_SHIFT   = 1;
+    const PDC_KEY_MODIFIER_CONTROL = 2;
+    const PDC_KEY_MODIFIER_ALT     = 4;
     const OK = 0;
     const SCREEN_ID = "screen";
     const SIZEOF_CELL = 4;
@@ -236,6 +253,30 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     let screenElement = null;
     let throttleBeep = false;
 
+    const mouseEventQueue  = [];   // pending mouse events for C to dequeue
+    let mouseEnabled       = false;
+    let mouseWait          = 150;  // click timeout in ms (from mouseinterval())
+
+    // Click-detection state
+    let pendingPress       = null; // { button, col, row, timeoutId } or null
+    let pressedButtons     = 0;   // bitmask of currently held buttons (0=left, 1=mid, 2=right as bit position)
+
+    // Double-click detection
+    let lastClickTime      = 0;
+    let lastClickCol       = -1;
+    let lastClickRow       = -1;
+    let lastClickButton    = -1;
+
+    // Move throttling
+    let lastMoveCol        = -1;
+    let lastMoveRow        = -1;
+
+    // Modifier key state
+    let currentModifiers   = 0;   // PDC_KEY_MODIFIER_* bitmask
+
+    // Clipboard
+    let cachedClipboardText = "";
+
     function createCells(colIndex, numCols, rowIndex, numRows) {
       for (let row = rowIndex; row < numRows; ++row) {
         screenBuffer[row] = screenBuffer[row] ?? [];
@@ -279,6 +320,9 @@ if (typeof window.PDCurses === ("undefined" || null)) {
 
     function initEventHandlers() {
       document.addEventListener("keydown", keydownHandler);
+      document.addEventListener("keyup", keyupHandler);
+      document.addEventListener("paste", pasteHandler);
+      window.addEventListener("blur", blurHandler);
       observer = new ResizeObserver(resizeHandler);
       observer.observe(screenElement);
     }
@@ -286,6 +330,12 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     function keydownHandler(event) {
       /* Restart the cursor animation on any keydown */
       restartCursorAnimation();
+
+      // Update modifier state
+      currentModifiers = 0;
+      if (event.shiftKey)   currentModifiers |= PDC_KEY_MODIFIER_SHIFT;
+      if (event.ctrlKey)    currentModifiers |= PDC_KEY_MODIFIER_CONTROL;
+      if (event.altKey)     currentModifiers |= PDC_KEY_MODIFIER_ALT;
 
       /* Need user gesture to start an AudioContext */
       if (beepContext === null) {
@@ -389,6 +439,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
 
     function PDC_flushinp() {
       inputBuffer.length = 0;
+      mouseEventQueue.length = 0;
     }
 
     function PDC_get_columns() {
@@ -444,6 +495,12 @@ if (typeof window.PDCurses === ("undefined" || null)) {
 
     function PDC_scr_close() {
       document.removeEventListener("keydown", keydownHandler);
+      document.removeEventListener("keyup", keyupHandler);
+      document.removeEventListener("paste", pasteHandler);
+      window.removeEventListener("blur", blurHandler);
+      if (mouseEnabled) {
+        PDC_mouse_set(0, mouseWait);
+      }
       observer.disconnect();
 
       screenElement?.remove();
@@ -603,21 +660,285 @@ if (typeof window.PDCurses === ("undefined" || null)) {
       }
     }
 
+    function blurHandler() {
+      currentModifiers = 0;
+    }
+
+    function contextmenuHandler(event) {
+      event.preventDefault();
+    }
+
+    function dequeue_mouse_event() {
+      return mouseEventQueue.shift();
+    }
+
+    function enqueueMouseEvent(evt) {
+      mouseEventQueue.push(evt);
+      inputBuffer.push(KEY_MOUSE);
+      dispatchEvent(new CustomEvent("inputBufferedEvent"));
+    }
+
+    function getButtonModifiers(event) {
+      let flags = 0;
+      if (event.shiftKey) flags |= PDC_BUTTON_SHIFT;
+      if (event.ctrlKey)  flags |= PDC_BUTTON_CONTROL;
+      if (event.altKey)   flags |= PDC_BUTTON_ALT;
+      return flags;
+    }
+
+    function keyupHandler(event) {
+      currentModifiers = 0;
+      if (event.shiftKey)   currentModifiers |= PDC_KEY_MODIFIER_SHIFT;
+      if (event.ctrlKey)    currentModifiers |= PDC_KEY_MODIFIER_CONTROL;
+      if (event.altKey)     currentModifiers |= PDC_KEY_MODIFIER_ALT;
+    }
+
+    function mousedownHandler(event) {
+      event.preventDefault();
+      const { col, row } = pixelToCell(event.clientX, event.clientY);
+      const btn = event.button;  // 0=left, 1=middle, 2=right
+      const mods = getButtonModifiers(event);
+
+      // Cancel any existing pending press for the same button (defensive)
+      if (pendingPress && pendingPress.button === btn) {
+        clearTimeout(pendingPress.timeoutId);
+        pendingPress = null;
+      }
+
+      const startPendingPress = () => {
+        const timeoutId = setTimeout(() => {
+          // Timeout fired - treat as PRESS (drag will follow)
+          pendingPress = null;
+          pressedButtons |= (1 << btn);
+          lastMoveCol = col;
+          lastMoveRow = row;
+          const buttons = [BUTTON_RELEASED, BUTTON_RELEASED, BUTTON_RELEASED];
+          buttons[btn] = BUTTON_PRESSED | mods;
+          enqueueMouseEvent({
+            x: col, y: row,
+            button0: buttons[0], button1: buttons[1], button2: buttons[2],
+            changes: (1 << btn)
+          });
+        }, mouseWait);
+        pendingPress = { button: btn, col, row, time: Date.now(), timeoutId, mods };
+      };
+
+      startPendingPress();
+
+      // mouseup listener on document to capture releases even outside screen element
+      document.addEventListener("mouseup", mouseupHandler);
+    }
+
+    function mousemoveHandler(event) {
+      if (!event.buttons) return;  // no button held, ignore
+
+      const { col, row } = pixelToCell(event.clientX, event.clientY);
+
+      // If we have a pending press, check if we've moved to a different cell
+      if (pendingPress) {
+        if (col !== pendingPress.col || row !== pendingPress.row) {
+          // Drag detected: cancel timer, send PRESSED, transition to DRAGGING
+          const btn = pendingPress.button;
+          const mods = pendingPress.mods;
+          const pressCol = pendingPress.col;
+          const pressRow = pendingPress.row;
+          clearTimeout(pendingPress.timeoutId);
+          pendingPress = null;
+          pressedButtons |= (1 << btn);
+          lastMoveCol = col;
+          lastMoveRow = row;
+
+          // First send PRESSED at the original position
+          const buttons = [BUTTON_RELEASED, BUTTON_RELEASED, BUTTON_RELEASED];
+          buttons[btn] = BUTTON_PRESSED | mods;
+          enqueueMouseEvent({
+            x: pressCol, y: pressRow,
+            button0: buttons[0], button1: buttons[1], button2: buttons[2],
+            changes: (1 << btn)
+          });
+
+          // Then send MOVED at new position
+          const moveButtons = [BUTTON_RELEASED, BUTTON_RELEASED, BUTTON_RELEASED];
+          moveButtons[btn] = BUTTON_MOVED | mods;
+          enqueueMouseEvent({
+            x: col, y: row,
+            button0: moveButtons[0], button1: moveButtons[1], button2: moveButtons[2],
+            changes: (1 << btn) | PDC_MOUSE_MOVED
+          });
+        }
+        return;
+      }
+
+      // If we are DRAGGING, send MOVED only when cell changes
+      if (pressedButtons && (col !== lastMoveCol || row !== lastMoveRow)) {
+        lastMoveCol = col;
+        lastMoveRow = row;
+        const mods = getButtonModifiers(event);
+
+        // Build button states based on which buttons are held
+        const button0 = (pressedButtons & 1) ? (BUTTON_MOVED | mods) : BUTTON_RELEASED;
+        const button1 = (pressedButtons & 2) ? (BUTTON_MOVED | mods) : BUTTON_RELEASED;
+        const button2 = (pressedButtons & 4) ? (BUTTON_MOVED | mods) : BUTTON_RELEASED;
+        let changes = PDC_MOUSE_MOVED;
+        if (pressedButtons & 1) changes |= 1;
+        if (pressedButtons & 2) changes |= 2;
+        if (pressedButtons & 4) changes |= 4;
+
+        enqueueMouseEvent({ x: col, y: row, button0, button1, button2, changes });
+      }
+    }
+
+    function mouseupHandler(event) {
+      document.removeEventListener("mouseup", mouseupHandler);
+
+      const { col, row } = pixelToCell(event.clientX, event.clientY);
+      const btn = event.button;
+      const mods = getButtonModifiers(event);
+
+      if (pendingPress && pendingPress.button === btn) {
+        // We were in WAIT_FOR_RELEASE: cancel timer, send CLICKED or DOUBLE_CLICKED
+        clearTimeout(pendingPress.timeoutId);
+        pendingPress = null;
+
+        let action;
+        if (btn === lastClickButton &&
+            col === lastClickCol && row === lastClickRow &&
+            Date.now() - lastClickTime < mouseWait) {
+          action = BUTTON_DOUBLE_CLICKED;
+        } else {
+          action = BUTTON_CLICKED;
+        }
+
+        lastClickButton = btn;
+        lastClickCol = col;
+        lastClickRow = row;
+        lastClickTime = Date.now();
+
+        const buttons = [BUTTON_RELEASED, BUTTON_RELEASED, BUTTON_RELEASED];
+        buttons[btn] = action | mods;
+        enqueueMouseEvent({
+          x: col, y: row,
+          button0: buttons[0], button1: buttons[1], button2: buttons[2],
+          changes: (1 << btn)
+        });
+      } else if (pressedButtons & (1 << btn)) {
+        // We were DRAGGING: send RELEASED
+        pressedButtons &= ~(1 << btn);
+        lastMoveCol = -1;
+        lastMoveRow = -1;
+
+        const buttons = [BUTTON_RELEASED, BUTTON_RELEASED, BUTTON_RELEASED];
+        buttons[btn] = BUTTON_RELEASED | mods;
+        enqueueMouseEvent({
+          x: col, y: row,
+          button0: buttons[0], button1: buttons[1], button2: buttons[2],
+          changes: (1 << btn)
+        });
+      }
+    }
+
+    function pasteHandler(event) {
+      cachedClipboardText = event.clipboardData?.getData("text/plain") ?? "";
+      event.preventDefault();
+    }
+
+    function PDC_clearclipboard() {
+      cachedClipboardText = "";
+      navigator.clipboard.writeText("").catch(() => {});
+      return 0;  // PDC_CLIP_SUCCESS
+    }
+
+    function PDC_get_modifiers() {
+      return currentModifiers;
+    }
+
+    function PDC_getclipboard_async() {
+      return navigator.clipboard.readText().then(
+        (text) => { cachedClipboardText = text; return text; },
+        () => cachedClipboardText
+      );
+    }
+
+    function PDC_mouse_set(enable, wait) {
+      mouseWait = wait;
+      if (enable && !mouseEnabled) {
+        screenElement.addEventListener("mousedown", mousedownHandler);
+        screenElement.addEventListener("mousemove", mousemoveHandler);
+        screenElement.addEventListener("wheel", wheelHandler, { passive: true });
+        screenElement.addEventListener("contextmenu", contextmenuHandler);
+        mouseEnabled = true;
+      } else if (!enable && mouseEnabled) {
+        screenElement.removeEventListener("mousedown", mousedownHandler);
+        screenElement.removeEventListener("mousemove", mousemoveHandler);
+        screenElement.removeEventListener("wheel", wheelHandler);
+        screenElement.removeEventListener("contextmenu", contextmenuHandler);
+        document.removeEventListener("mouseup", mouseupHandler);
+        if (pendingPress) {
+          clearTimeout(pendingPress.timeoutId);
+          pendingPress = null;
+        }
+        pressedButtons = 0;
+        mouseEventQueue.length = 0;
+        mouseEnabled = false;
+      }
+    }
+
+    function PDC_setclipboard_async(text) {
+      cachedClipboardText = text;
+      return navigator.clipboard.writeText(text).then(
+        () => 0,    // PDC_CLIP_SUCCESS
+        () => 0     // store locally succeeded even if OS clipboard failed
+      );
+    }
+
+    function pixelToCell(clientX, clientY) {
+      const rect = screenElement.getBoundingClientRect();
+      const { chHeight, chWidth } = getChDimensions(screenElement);
+      return {
+        col: Math.max(0, Math.min(numCols - 1, Math.floor((clientX - rect.left) / chWidth))),
+        row: Math.max(0, Math.min(numRows - 1, Math.floor((clientY - rect.top) / chHeight)))
+      };
+    }
+
+    function wheelHandler(event) {
+      const { col, row } = pixelToCell(event.clientX, event.clientY);
+      let changes = 0;
+
+      if (event.deltaY < 0)      changes |= PDC_MOUSE_WHEEL_UP;
+      else if (event.deltaY > 0) changes |= PDC_MOUSE_WHEEL_DOWN;
+      if (event.deltaX < 0)      changes |= PDC_MOUSE_WHEEL_LEFT;
+      else if (event.deltaX > 0) changes |= PDC_MOUSE_WHEEL_RIGHT;
+
+      if (changes) {
+        enqueueMouseEvent({
+          x: col, y: row,
+          button0: BUTTON_RELEASED, button1: BUTTON_RELEASED, button2: BUTTON_RELEASED,
+          changes
+        });
+      }
+    }
+
     return {
-      mapColor: mapColor,
-      PDC_beep: PDC_beep,
-      PDC_check_key: PDC_check_key,
-      PDC_curs_set: PDC_curs_set,
-      PDC_flushinp: PDC_flushinp,
-      PDC_get_columns: PDC_get_columns,
-      PDC_get_key: PDC_get_key,
-      PDC_get_rows: PDC_get_rows,
-      PDC_gotoyx: PDC_gotoyx,
-      PDC_scr_close: PDC_scr_close,
-      PDC_scr_open: PDC_scr_open,
-      PDC_transform_line: PDC_transform_line,
-      PDC_wcwidth: PDC_wcwidth,
-      setCell: setCell
+      mapColor,
+      PDC_beep,
+      PDC_check_key,
+      PDC_clearclipboard,
+      PDC_curs_set,
+      PDC_flushinp,
+      PDC_get_columns,
+      PDC_get_key,
+      PDC_get_modifiers,
+      PDC_get_rows,
+      PDC_getclipboard_async,
+      PDC_gotoyx,
+      PDC_mouse_set,
+      PDC_scr_close,
+      PDC_scr_open,
+      PDC_setclipboard_async,
+      PDC_transform_line,
+      PDC_wcwidth,
+      dequeue_mouse_event,
+      setCell
     }
   })();
 }
