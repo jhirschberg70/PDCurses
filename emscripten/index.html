@@ -53,36 +53,37 @@
     <script src="pdcurses.js"></script>
     <script>
       function loadScript(scriptName) {
-        return new Promise((resolve, reject) => {
+        const promise = new Promise((resolve, reject) => {
+          function cleanup() {
+            clearTimeout(timeoutId);
+            script.onload = null;
+            script.onerror = null;
+          }
+
           const script = document.createElement("script");
           script.src = scriptName;
 
-          function removeListeners() {
-            script.removeEventListener("load", loaded);
-            script.removeEventListener("error", errorHandler);
-          }
-
-          function loaded() {
-            clearTimeout(timeout);
-            removeListeners();
+          script.onload = () => {
+            cleanup();
             resolve();
-          }
+          };
 
-          function errorHandler() {
-            clearTimeout(timeout);
-            removeListeners();
+          script.onerror = () => {
+            cleanup();
+            script.remove();
             reject(new Error(`Failed to load script: ${scriptName}`));
-          }
+          };
 
-          script.addEventListener("load", loaded);
-          script.addEventListener("error", errorHandler);
-
-          const timeout = setTimeout(() => {
-            removeListeners();
-            reject(new Error(`Failed to load script: ${scriptName}`));
+          const timeoutId = setTimeout(() => {
+            cleanup();
+            script.remove();
+            reject(new Error(`Timed out loading script ${scriptName}`));
           }, 5000);
-          document.head.appendChild(script);
+
+          document.head.append(script);
         });
+
+        return promise;
       }
 
       let modules = new Map();
@@ -91,9 +92,16 @@
         if (event.target instanceof HTMLButtonElement) {
           const scriptName = event.target.getAttribute("data-script");
           if (!modules.has(scriptName)) {
-            await loadScript(scriptName).catch((error) => { console.error(error); });
-            const module = await Module();
-            modules.set(scriptName, module);
+            try {
+              await loadScript(scriptName);
+
+              const module = await Module();
+
+              modules.set(scriptName, module);
+            } catch (error) {
+              console.error(error);
+              return;
+            }
           }
 
           modules.get(scriptName).callMain();
