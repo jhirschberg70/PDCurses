@@ -1,11 +1,8 @@
-if (typeof window.PDCurses === ("undefined" || null)) {
-
-  window.PDCurses = (() => {
+if ((typeof window !== "undefined") && (typeof window.document !== "undefined")) {
+  window.PDCurses ??= (() => {
     "use strict";
 
     const CURSOR_ID = "cursor";
-    const ERR = -1;
-    const FALSE = 0;
     const KEY_RESIZE = 0x222;
     const KEY_MOUSE           = 0x21b;
     const PDC_BUTTON_SHIFT    = 0x0008;
@@ -27,7 +24,6 @@ if (typeof window.PDCurses === ("undefined" || null)) {
     const OK = 0;
     const SCREEN_ID = "screen";
     const SIZEOF_CELL = 4;
-    const TRUE = 1;
 
     const KEY_MAP = new Map([
       ["^@", 0x00],
@@ -410,7 +406,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
         if (inputBuffer.length) return resolve(true);
 
         if (timeout >= 0) {
-          function listener(event) {
+          function listener() {
             if (timeoutId) clearTimeout(timeoutId);
             resolve(true);
           }
@@ -424,7 +420,7 @@ if (typeof window.PDCurses === ("undefined" || null)) {
             resolve(inputBuffer.length > 0);
           }, timeout);
         } else {
-          addEventListener("inputBufferedEvent", (event) => {
+          addEventListener("inputBufferedEvent", () => {
             resolve(true);
           }, { once: true });
         }
@@ -579,8 +575,6 @@ if (typeof window.PDCurses === ("undefined" || null)) {
 
     function resizeHandler() {
       const { cols: newCols, rows: newRows } = getGridDimensions(screenElement);
-
-      const screenComputedStyle = window.getComputedStyle(screenElement);
 
       if ((newCols != numCols) || (newRows != numRows)) {
         screenElement.style.setProperty("--cols", newCols);
