@@ -5,11 +5,20 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Emscripten",
+      "name": "No server (External Chrome)",
       "request": "launch",
       "type": "chrome",
       "url": "file://${workspaceFolder}/emscripten/index.html",
       "webRoot": "${workspaceFolder}/emscripten"
+    },
+    {
+      "name": "Live Preview (External Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://127.0.0.1:3000/${relativeFile}",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "Start Local Server",
+      "disableNetworkCache": true
     },
     {
       "name": "(gdb) firework",
