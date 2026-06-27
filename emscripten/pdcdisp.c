@@ -15,7 +15,7 @@ void PDC_gotoyx(int row, int col)
     PDC_LOG(("PDC_gotoyx() - called: row %d col %d from row %d col %d\n",
              row, col, SP->cursrow, SP->curscol));
 
-    EM_ASM(PDCurses.PDC_gotoyx($0, $1), row, col);
+    MAIN_THREAD_EM_ASM(PDCurses.PDC_gotoyx($0, $1), row, col);
 }
 
 /* update the given physical line to look like the corresponding line in
@@ -90,10 +90,13 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
         line_buffer[i].attrs = (blink ? 1 : 0) | (bold ? 2 : 0) | (italic ? 4 : 0) | (underline ? 8 : 0);
     }
 
-    EM_ASM({ PDCurses.PDC_transform_line(HEAPU32, $0 >>> 2, $1, $2, $3); }, line_buffer, lineno, x, len);
+    MAIN_THREAD_EM_ASM({ PDCurses.PDC_transform_line(HEAPU32, $0 >>> 2, $1, $2, $3); }, line_buffer, lineno, x, len);
 }
 
 int PDC_wcwidth(wchar_t ch)
 {
-    return EM_ASM_INT(return PDCurses.PDC_wcwidth($0), ch);
+    // Temporary implementation. Plan to move PDC_wcwidth out of PDCurses and
+    // into the worker thread to avoid overhead of calling MAIN_THREAD_EM_ASM
+    // for every character.
+    return 1;
 }

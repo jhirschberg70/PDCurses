@@ -7,7 +7,7 @@
 int PDC_get_columns(void) {
   PDC_LOG(("PDC_get_columns() - called\n"));
 
-  int cols = EM_ASM_INT(return PDCurses.PDC_get_columns());
+  int cols = MAIN_THREAD_EM_ASM_INT(return PDCurses.PDC_get_columns());
 
   PDC_LOG(("PDC_get_columns() - returned: cols %d\n", cols));
 
@@ -28,7 +28,7 @@ int PDC_get_cursor_mode(void)
 int PDC_get_rows(void) {
   PDC_LOG(("PDC_get_rows() - called\n"));
 
-  int rows = EM_ASM_INT(return PDCurses.PDC_get_rows());
+  int rows = MAIN_THREAD_EM_ASM_INT(return PDCurses.PDC_get_rows());
 
   PDC_LOG(("PDC_get_rows() - returned: rows %d\n", rows));
 

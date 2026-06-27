@@ -35,7 +35,7 @@ static void _initialize_colors(void)
         pdc_color[i].r = pdc_color[i].g = pdc_color[i].b = (i - 232) * 10 + 8;
 
     for (i = 0; i < 256; i++)
-        EM_ASM(PDCurses.mapColor($0, $1, $2, $3), i, pdc_color[i].r, pdc_color[i].g, pdc_color[i].b);
+        MAIN_THREAD_EM_ASM(PDCurses.mapColor($0, $1, $2, $3), i, pdc_color[i].r, pdc_color[i].g, pdc_color[i].b);
 }
 
 bool PDC_can_change_color(void)
@@ -63,7 +63,7 @@ int PDC_init_color(short color, short red, short green, short blue)
     pdc_color[color].g = DIVROUND(green * 255, 1000);
     pdc_color[color].b = DIVROUND(blue * 255, 1000);
 
-    EM_ASM(PDCurses.mapColor($0, $1, $2, $3), color, pdc_color[color].r, pdc_color[color].g, pdc_color[color].b);
+    MAIN_THREAD_EM_ASM(PDCurses.mapColor($0, $1, $2, $3), color, pdc_color[color].r, pdc_color[color].g, pdc_color[color].b);
 
     return OK;
 }
@@ -99,7 +99,7 @@ void PDC_scr_close(void)
 {
     PDC_LOG(("PDC_scr_close() - called\n"));
 
-    EM_ASM(PDCurses.PDC_scr_close());
+    MAIN_THREAD_EM_ASM(PDCurses.PDC_scr_close());
 }
 
 void PDC_scr_free(void)
@@ -115,12 +115,12 @@ int PDC_scr_open(void)
     SP->mouse_wait = PDC_CLICK_PERIOD;
     SP->audible = TRUE;
     SP->mono = FALSE;
-    SP->termattrs = A_COLOR | A_ITALIC | A_UNDERLINE | A_LEFT | A_RIGHT | 
+    SP->termattrs = A_COLOR | A_ITALIC | A_UNDERLINE | A_LEFT | A_RIGHT |
                     A_REVERSE;
 
     _initialize_colors();
-    
-    return EM_ASM_INT(return PDCurses.PDC_scr_open());
+    PDC_kbd_init();
+    return MAIN_THREAD_EM_ASM_INT(return PDCurses.PDC_scr_open());
 }
 
 void _sigwinch_handler(void)

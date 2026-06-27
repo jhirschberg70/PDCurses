@@ -12,7 +12,7 @@ int PDC_curs_set(int visibility)
 
     SP->visibility = visibility;
 
-    EM_ASM(PDCurses.PDC_curs_set($0), visibility);
+    MAIN_THREAD_EM_ASM(PDCurses.PDC_curs_set($0), visibility);
 
     return ret_vis;
 }

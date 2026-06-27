@@ -18,19 +18,19 @@ DEMOS =
 
 ifeq ($(DEBUG),Y)
 ifeq ($(WIDE),Y)
-	CFLAGS  = -g3 -Wall -DPDCDEBUG -DPDC_WIDE
+	CFLAGS  = -g3 -pthread -Wall -DPDCDEBUG -DPDC_WIDE
 	LIBCURSES	= libpdcursesw_g.a
-	DEMOS = unicode.js
+# 	DEMOS = unicode.js
 else
-	CFLAGS  = -g3 -Wall -DPDCDEBUG
+	CFLAGS  = -g3 -pthread -Wall -DPDCDEBUG
 	LIBCURSES	= libpdcurses_g.a
 endif
 else ifeq ($(WIDE), Y)
-	CFLAGS  = -O3 -Wall -DPDC_WIDE
+	CFLAGS  = -O3 -pthread -Wall -DPDC_WIDE
 	LIBCURSES	= libpdcursesw.a
-	DEMOS = unicode.js
+# 	DEMOS = unicode.js
 else
-	CFLAGS  = -O3 -Wall
+	CFLAGS  = -O3 -pthread -Wall
 	LIBCURSES	= libpdcurses.a
 endif
 
@@ -40,7 +40,7 @@ BUILD		= $(CC) $(CFLAGS) -I$(PDCURSES_SRCDIR)
 PDCURSES_JS = pdcurses.js
 
 #DEMO_LDFLAGS	= $(LIBCURSES) -lidbfs.js -sASYNCIFY -sENVIRONMENT=web -sEXIT_RUNTIME=1 -sEXPORTED_FUNCTIONS="[_main, __sigwinch_handler]" -sEXPORTED_RUNTIME_METHODS="[cwrap, callMain]" -sFORCE_FILESYSTEM -sINVOKE_RUN=0 -sSINGLE_FILE=1
-DEMO_LDFLAGS	= $(LIBCURSES) -sASYNCIFY -sENVIRONMENT=web -sEXIT_RUNTIME=1 -sEXPORTED_RUNTIME_METHODS="[callMain]" -sINVOKE_RUN=0 -sSINGLE_FILE=1 -sMODULARIZE
+DEMO_LDFLAGS		= $(LIBCURSES) -pthread -sPROXY_TO_PTHREAD -sSINGLE_FILE=1 -sMODULARIZE -sPTHREAD_POOL_SIZE=2
 DEMOS			+= firework.js ozdemo.js rain.js stress.js test_mouse.js testcurs.js worm.js xmas.js
 
 .PHONY: all libs clean demos
@@ -89,8 +89,8 @@ test_mouse.js: ../demos/test_mouse.c $(PDCURSES_JS)
 testcurs.js: ../demos/testcurs.c $(PDCURSES_JS)
 	$(BUILD) -o $@ $< $(DEMO_LDFLAGS)
 
-unicode.js: ../demos/unicode.c $(PDCURSES_JS)
-	$(BUILD) -o $@ $< $(DEMO_LDFLAGS)
+# unicode.js: ../demos/unicode.c $(PDCURSES_JS)
+# 	$(BUILD) -o $@ $< $(DEMO_LDFLAGS)
 
 worm.js: ../demos/worm.c $(PDCURSES_JS)
 	$(BUILD) -o $@ $< $(DEMO_LDFLAGS)

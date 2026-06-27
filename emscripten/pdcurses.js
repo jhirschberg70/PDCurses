@@ -273,6 +273,10 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     // Clipboard
     let cachedClipboardText = "";
 
+    // Atomics-based key notification (initialised by PDC_kbd_init via set_key_notify)
+    let _keyNotifyHeap = null;
+    let _keyNotifyIdx = 0;
+
     function createCells(colIndex, numCols, rowIndex, numRows) {
       for (let row = rowIndex; row < numRows; ++row) {
         screenBuffer[row] = screenBuffer[row] ?? [];
@@ -323,15 +327,22 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       observer.observe(screenElement);
     }
 
+    function _notifyKeyWaiter() {
+      if (_keyNotifyHeap) {
+        Atomics.add(_keyNotifyHeap, _keyNotifyIdx, 1);
+        Atomics.notify(_keyNotifyHeap, _keyNotifyIdx, 1);
+      }
+    }
+
     function keydownHandler(event) {
       /* Restart the cursor animation on any keydown */
       restartCursorAnimation();
 
       // Update modifier state
       currentModifiers = 0;
-      if (event.shiftKey)   currentModifiers |= PDC_KEY_MODIFIER_SHIFT;
-      if (event.ctrlKey)    currentModifiers |= PDC_KEY_MODIFIER_CONTROL;
-      if (event.altKey)     currentModifiers |= PDC_KEY_MODIFIER_ALT;
+      if (event.shiftKey) currentModifiers |= PDC_KEY_MODIFIER_SHIFT;
+      if (event.ctrlKey) currentModifiers |= PDC_KEY_MODIFIER_CONTROL;
+      if (event.altKey) currentModifiers |= PDC_KEY_MODIFIER_ALT;
 
       /* Need user gesture to start an AudioContext */
       if (beepContext === null) {
@@ -364,9 +375,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
       if (KEY_MAP.has(key)) {
         inputBuffer.push(KEY_MAP.get(key));
-
-        dispatchEvent(new CustomEvent("inputBufferedEvent"));
-
+        _notifyKeyWaiter();
         console.log(inputBuffer);
       }
       else {
@@ -401,30 +410,13 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       beepSound.stop(beepContext.currentTime + 0.25);
     }
 
-    function PDC_check_key(timeout) {
-      return new Promise((resolve) => {
-        if (inputBuffer.length) return resolve(true);
+    function inputBuffer_length() {
+      return inputBuffer.length;
+    }
 
-        if (timeout >= 0) {
-          function listener() {
-            if (timeoutId) clearTimeout(timeoutId);
-            resolve(true);
-          }
-
-          let timeoutId = null;
-
-          addEventListener("inputBufferedEvent", listener, { once: true });
-
-          timeoutId = setTimeout(() => {
-            removeEventListener("inputBufferedEvent", listener);
-            resolve(inputBuffer.length > 0);
-          }, timeout);
-        } else {
-          addEventListener("inputBufferedEvent", () => {
-            resolve(true);
-          }, { once: true });
-        }
-      });
+    function set_key_notify(heapu32, ptr) {
+      _keyNotifyHeap = heapu32;
+      _keyNotifyIdx = ptr >>> 2;
     }
 
     function PDC_curs_set(visibility) {
@@ -599,7 +591,8 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
         numCols = newCols;
         numRows = newRows;
 
-        inputBuffer.unshift(KEY_RESIZE)
+        inputBuffer.unshift(KEY_RESIZE);
+        _notifyKeyWaiter();
         console.log(`resize numRows:${numRows} numCols:${numCols}`);
       }
     }
@@ -669,7 +662,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     function enqueueMouseEvent(evt) {
       mouseEventQueue.push(evt);
       inputBuffer.push(KEY_MOUSE);
-      dispatchEvent(new CustomEvent("inputBufferedEvent"));
+      _notifyKeyWaiter();
     }
 
     function getButtonModifiers(event) {
@@ -915,7 +908,6 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     return {
       mapColor,
       PDC_beep,
-      PDC_check_key,
       PDC_clearclipboard,
       PDC_curs_set,
       PDC_flushinp,
@@ -925,6 +917,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       PDC_get_rows,
       PDC_getclipboard_async,
       PDC_gotoyx,
+      inputBuffer_length,
       PDC_mouse_set,
       PDC_scr_close,
       PDC_scr_open,
@@ -932,6 +925,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       PDC_transform_line,
       PDC_wcwidth,
       dequeue_mouse_event,
+      set_key_notify,
       setCell
     }
   })();

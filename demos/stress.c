@@ -27,8 +27,9 @@ static chtype rand_ascii_char(void)
 int main(int argc, char **argv)
 {
     int row, col, pass, ncolors;
-    clock_t t_start, t_end, t_ref_start;
+    // clock_t t_start, t_end, t_ref_start;
     double elapsed_total, elapsed_refresh;
+    double t_start, t_end, t_ref_start;
 
     srand((unsigned int)time(NULL));
 
@@ -50,7 +51,7 @@ int main(int argc, char **argv)
                           (short)fg, (short)bg);
     }
 
-    t_start = clock();
+    t_start = emscripten_get_now();
     elapsed_refresh = 0.0;
 
     for (pass = 0; pass < PASSES; pass++)
@@ -77,13 +78,13 @@ int main(int argc, char **argv)
             }
         }
 
-        t_ref_start = clock();
+        t_ref_start = emscripten_get_now();
         refresh();
-        elapsed_refresh += (double)(clock() - t_ref_start) / CLOCKS_PER_SEC;
+        elapsed_refresh += (double)(emscripten_get_now() - t_ref_start) / 1000.0;
     }
 
-    t_end = clock();
-    elapsed_total = (double)(t_end - t_start) / CLOCKS_PER_SEC;
+    t_end = emscripten_get_now();
+    elapsed_total = (double)(t_end - t_start) / 1000.0;
 
     nodelay(stdscr, FALSE);
     curs_set(1);

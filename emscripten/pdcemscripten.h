@@ -26,4 +26,6 @@ typedef struct
 
 extern PDC_EMSCRIPTEN_COLOR pdc_color[PDC_EMSCRIPTEN_MAXCOL];
 
+void PDC_kbd_init(void);
+
 #endif

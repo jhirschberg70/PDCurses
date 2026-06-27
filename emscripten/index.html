@@ -95,16 +95,14 @@
             try {
               await loadScript(scriptName);
 
-              const module = await Module();
-
-              modules.set(scriptName, module);
+              modules.set(scriptName, Module);
             } catch (error) {
               console.error(error);
               return;
             }
           }
 
-          modules.get(scriptName).callMain();
+          modules.get(scriptName)();
         }
       });
     </script>
