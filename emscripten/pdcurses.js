@@ -414,8 +414,8 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       return inputBuffer.length;
     }
 
-    function set_key_notify(heapu32, ptr) {
-      _keyNotifyHeap = heapu32;
+    function set_key_notify(heap32, ptr) {
+      _keyNotifyHeap = heap32;
       _keyNotifyIdx = ptr >>> 2;
     }
 
