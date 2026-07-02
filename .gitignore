@@ -1,4 +1,5 @@
 *.o
 *.a
 *.js
+*.wasm
 !pdcurses.js
