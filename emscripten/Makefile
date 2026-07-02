@@ -50,7 +50,7 @@ all:	libs demos
 libs:	$(LIBCURSES)
 
 clean:
-	-rm -rf *.o trace firework.js ozdemo.js rain.js stress.js test_mouse.js testcurs.js unicode.js worm.js xmas.js libpdcurses.a libpdcurses_g.a libpdcursesw.a libpdcursesw_g.a
+	-rm -rf *.o *.wasm trace firework.js ozdemo.js rain.js stress.js test_mouse.js testcurs.js unicode.js worm.js xmas.js libpdcurses.a libpdcurses_g.a libpdcursesw.a libpdcursesw_g.a
 
 demos:	$(DEMOS)
 
