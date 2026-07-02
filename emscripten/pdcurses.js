@@ -2,28 +2,28 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
   window.PDCurses ??= (() => {
     "use strict";
 
-    const CURSOR_ID = "cursor";
-    const KEY_RESIZE = 0x222;
-    const KEY_MOUSE           = 0x21b;
-    const PDC_BUTTON_SHIFT    = 0x0008;
-    const PDC_BUTTON_CONTROL  = 0x0010;
-    const PDC_BUTTON_ALT      = 0x0020;
-    const BUTTON_RELEASED     = 0x0000;
-    const BUTTON_PRESSED      = 0x0001;
-    const BUTTON_CLICKED      = 0x0002;
-    const BUTTON_DOUBLE_CLICKED = 0x0003;
-    const BUTTON_MOVED        = 0x0005;
-    const PDC_MOUSE_MOVED     = 0x0008;
-    const PDC_MOUSE_WHEEL_UP  = 0x0020;
-    const PDC_MOUSE_WHEEL_DOWN = 0x0040;
-    const PDC_MOUSE_WHEEL_LEFT = 0x0080;
-    const PDC_MOUSE_WHEEL_RIGHT = 0x0100;
+    const CURSOR_ID                = "cursor";
+    const KEY_RESIZE               = 0x222;
+    const KEY_MOUSE                = 0x21b;
+    const PDC_BUTTON_SHIFT         = 0x0008;
+    const PDC_BUTTON_CONTROL       = 0x0010;
+    const PDC_BUTTON_ALT           = 0x0020;
+    const BUTTON_RELEASED          = 0x0000;
+    const BUTTON_PRESSED           = 0x0001;
+    const BUTTON_CLICKED           = 0x0002;
+    const BUTTON_DOUBLE_CLICKED    = 0x0003;
+    const BUTTON_MOVED             = 0x0005;
+    const PDC_MOUSE_MOVED          = 0x0008;
+    const PDC_MOUSE_WHEEL_UP       = 0x0020;
+    const PDC_MOUSE_WHEEL_DOWN     = 0x0040;
+    const PDC_MOUSE_WHEEL_LEFT     = 0x0080;
+    const PDC_MOUSE_WHEEL_RIGHT    = 0x0100;
     const PDC_KEY_MODIFIER_SHIFT   = 1;
     const PDC_KEY_MODIFIER_CONTROL = 2;
     const PDC_KEY_MODIFIER_ALT     = 4;
-    const OK = 0;
-    const SCREEN_ID = "screen";
-    const SIZEOF_CELL = 4;
+    const OK                       = 0;
+    const SCREEN_ID                = "screen";
+    const SIZEOF_CELL              = 4;
 
     const KEY_MAP = new Map([
       ["^@", 0x00],
@@ -234,22 +234,23 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       0xFEFF
     ]);
 
-    const charWidthMap = new Map();
-    const colorMap = [];
-    const inputBuffer = [];
-    const screenBuffer = [];
-
-    let beepContext = null;
-    let charWidthCtx = null;
-    let cursorElement = null;;
-    let numCols = null;
-    let numRows = null;
-    let observer = null;
-    let refCharWidth = null;
-    let screenElement = null;
-    let throttleBeep = false;
-
+    const beepContext      = new AudioContext();
+    const charWidthMap     = new Map();
+    const colorMap         = [];
+    const inputBuffer      = [];
     const mouseEventQueue  = [];   // pending mouse events for C to dequeue
+    const screenBuffer     = [];
+
+    let charWidthCtx       = null;
+    let cursorElement      = null;;
+    let numCols            = null;
+    let numRows            = null;
+    let observer           = null;
+    let refCharWidth       = null;
+    let screenElement      = null;
+    let throttleBeep       = false;
+
+
     let mouseEnabled       = false;
     let mouseWait          = 150;  // click timeout in ms (from mouseinterval())
 
@@ -258,24 +259,24 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     let pressedButtons     = 0;   // bitmask of currently held buttons (0=left, 1=mid, 2=right as bit position)
 
     // Double-click detection
-    let lastClickTime      = 0;
-    let lastClickCol       = -1;
-    let lastClickRow       = -1;
-    let lastClickButton    = -1;
+    let lastClickTime   =  0;
+    let lastClickCol    = -1;
+    let lastClickRow    = -1;
+    let lastClickButton = -1;
 
     // Move throttling
-    let lastMoveCol        = -1;
-    let lastMoveRow        = -1;
+    let lastMoveCol = -1;
+    let lastMoveRow = -1;
 
     // Modifier key state
-    let currentModifiers   = 0;   // PDC_KEY_MODIFIER_* bitmask
+    let currentModifiers = 0;   // PDC_KEY_MODIFIER_* bitmask
 
     // Clipboard
     let cachedClipboardText = "";
 
     // Atomics-based key notification (initialised by PDC_kbd_init via set_key_notify)
     let _keyNotifyHeap = null;
-    let _keyNotifyIdx = 0;
+    let _keyNotifyIdx  = 0;
 
     function createCells(colIndex, numCols, rowIndex, numRows) {
       for (let row = rowIndex; row < numRows; ++row) {
@@ -338,16 +339,16 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       /* Restart the cursor animation on any keydown */
       restartCursorAnimation();
 
+      /* Need user gesture to start an AudioContext */
+      if (beepContext?.state === "suspended") {
+        beepContext.resume();
+      }
+
       // Update modifier state
       currentModifiers = 0;
       if (event.shiftKey) currentModifiers |= PDC_KEY_MODIFIER_SHIFT;
       if (event.ctrlKey) currentModifiers |= PDC_KEY_MODIFIER_CONTROL;
       if (event.altKey) currentModifiers |= PDC_KEY_MODIFIER_ALT;
-
-      /* Need user gesture to start an AudioContext */
-      if (beepContext === null) {
-        beepContext = new window.AudioContext();
-      }
 
       let key = "";
 
@@ -604,7 +605,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       cursorElement.offsetWidth;
       cursorElement.style.setProperty("animation-name", "blink");
     }
-    
+
     function setCell(row, col, codePoint, color, background, blink, bold, italic, underline) {
       const cell = screenBuffer[row][col];
 
@@ -778,6 +779,11 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     function mouseupHandler(event) {
       document.removeEventListener("mouseup", mouseupHandler);
 
+      /* Need user gesture to start an AudioContext */
+      if (beepContext?.state === "suspended") {
+        beepContext.resume();
+      }
+
       const { col, row } = pixelToCell(event.clientX, event.clientY);
       const btn = event.button;
       const mods = getButtonModifiers(event);
@@ -789,8 +795,8 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
         let action;
         if (btn === lastClickButton &&
-            col === lastClickCol && row === lastClickRow &&
-            Date.now() - lastClickTime < mouseWait) {
+          col === lastClickCol && row === lastClickRow &&
+          Date.now() - lastClickTime < mouseWait) {
           action = BUTTON_DOUBLE_CLICKED;
         } else {
           action = BUTTON_CLICKED;
@@ -831,7 +837,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
     function PDC_clearclipboard() {
       cachedClipboardText = "";
-      navigator.clipboard.writeText("").catch(() => {});
+      navigator.clipboard.writeText("").catch(() => { });
       return 0;  // PDC_CLIP_SUCCESS
     }
 
