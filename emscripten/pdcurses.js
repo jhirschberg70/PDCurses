@@ -181,10 +181,6 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       ["End", 0x168]  // KEY_END
     ]);
 
-    const PREVENT_DEFAULT = new Set([
-      "Escape"
-    ]);
-
     const WHITESPACE = new Set([
       0x0009,
       0x000A,
@@ -336,6 +332,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     }
 
     function keydownHandler(event) {
+      event.preventDefault();
       /* Restart the cursor animation on any keydown */
       restartCursorAnimation();
 
@@ -352,10 +349,6 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
       let key = "";
 
-      if (PREVENT_DEFAULT.has(event.key)) event.preventDefault();
-
-      // event.preventDefault();
-
       // If modifier only, return
       if ((event.key === "Alt") ||
         (event.key === "Control") ||
@@ -367,7 +360,6 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       //  Ctrl because there aren't any ASCII codes that use Alt, and
       //  Shift is already accounted for with unique symbols(capital
       //  letters, +, _ etc.)
-
       if (event.ctrlKey) {
         key += "^";
       }
