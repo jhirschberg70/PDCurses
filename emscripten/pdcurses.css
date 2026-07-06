@@ -60,9 +60,8 @@
 }
 
 .screen {
-  background: var(--bg-color);
+  background-color: black;
   border: none;
-  color: var(--fg-color);
   cursor: default;
   display: grid;
   font-family: var(--font-family, monospace);
