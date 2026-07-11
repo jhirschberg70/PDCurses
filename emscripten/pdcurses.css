@@ -60,6 +60,7 @@
 }
 
 .screen {
+  align-items: normal;
   background-color: black;
   border: none;
   cursor: default;
@@ -70,12 +71,15 @@
   grid-auto-columns: var(--col-size, 1ch);
   grid-auto-rows: var(--row-size, 1lh);
   height: 100dvh;
+  justify-content: normal;
   left: 0;
   line-height: 1;
+  margin: 0;
   max-height: none;
   max-width: none;
   outline: none;
   overflow: hidden;
+  padding: 0;
   top: 0;
   user-select: none;
   width: 100dvw;
