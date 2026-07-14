@@ -1,27 +1,11 @@
 /* PDCurses */
 
 #include "pdcemscripten.h"
+#include <emscripten/threading.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 
-EM_ASYNC_JS(int, _js_setclipboard, (const char *text), {
-  const str = UTF8ToString(text);
-  return await PDCurses.PDC_setclipboard_async(str);
-});
-
-EM_ASYNC_JS(int, _js_getclipboard, (int out_ptr, int out_len), {
-  const text = await PDCurses.PDC_getclipboard_async();
-  if (!text || text.length == 0) {
-    HEAP32[out_ptr >> 2] = 0;
-    HEAP32[out_len >> 2] = 0;
-    return 2; /* PDC_CLIP_EMPTY */
-  }
-  const byteLen = lengthBytesUTF8(text);
-  const ptr = _malloc(byteLen + 1);
-  stringToUTF8(text, ptr, byteLen + 1);
-  HEAP32[out_ptr >> 2] = ptr;
-  HEAP32[out_len >> 2] = byteLen;
-  return 0; /* PDC_CLIP_SUCCESS */
-});
+static _Atomic uint32_t clipboard_mutex = 0;
 
 /*man-start**************************************************************
 
@@ -68,16 +52,38 @@ int PDC_getclipboard(char **contents, long *length) {
   if (!contents || !length)
     return PDC_CLIP_ACCESS_ERROR;
 
-  return _js_getclipboard((int)contents, (int)length);
+  clipboard_mutex = 0;
+  MAIN_THREAD_EM_ASM(PDCurses.PDC_getclipboard_async(HEAP32, $0), &clipboard_mutex);
+
+  emscripten_atomic_wait_u32(&clipboard_mutex, 0, -1.0);
+  return MAIN_THREAD_EM_ASM_INT({
+    const text = PDCurses.PDC_getclipboard();
+    console.log(text);
+    if (!text || text.length == 0) {
+      HEAP32[$0 >> 2] = 0;
+      HEAP32[$1 >> 2] = 0;
+      return 2; // PDC_CLIP_EMPTY
+    }
+    const byteLen = lengthBytesUTF8(text);
+    const ptr = _malloc(byteLen + 1);
+    stringToUTF8(text, ptr, byteLen + 1);
+    HEAP32[$0 >> 2] = ptr;
+    HEAP32[$1 >> 2] = byteLen;
+    return 0; // PDC_CLIP_SUCCESS
+  }, contents, length);
 }
+
 
 int PDC_setclipboard(const char *contents, long length) {
   PDC_LOG(("PDC_setclipboard() - called\n"));
 
   if (!contents)
     return PDC_CLIP_ACCESS_ERROR;
-
-  return _js_setclipboard(contents);
+  
+  clipboard_mutex = 0;
+  MAIN_THREAD_EM_ASM(PDCurses.PDC_setclipboard_async(UTF8ToString($0), HEAP32, $1), contents, &clipboard_mutex);
+  emscripten_atomic_wait_u32(&clipboard_mutex, 0, -1.0);
+  return PDC_CLIP_SUCCESS;
 }
 
 int PDC_freeclipboard(char *contents) {
@@ -90,6 +96,6 @@ int PDC_freeclipboard(char *contents) {
 int PDC_clearclipboard(void) {
   PDC_LOG(("PDC_clearclipboard() - called\n"));
 
-  EM_ASM(PDCurses.PDC_clearclipboard());
+  MAIN_THREAD_EM_ASM(PDCurses.PDC_clearclipboard());
   return PDC_CLIP_SUCCESS;
 }

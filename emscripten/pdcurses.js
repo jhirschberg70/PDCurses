@@ -273,7 +273,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     // Atomics-based key notification (initialised by PDC_kbd_init via set_key_notify)
     let _keyNotifyHeap = null;
     let _keyNotifyIdx  = 0;
-
+    
     function createCells(colIndex, numCols, rowIndex, numRows) {
       for (let row = rowIndex; row < numRows; ++row) {
         screenBuffer[row] = screenBuffer[row] ?? [];
@@ -592,7 +592,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
     function restartCursorAnimation() {
       // cursorElement.offsetWidth is necessary to force reflow, which forces the browser to
-      // apply animation-name to none. Otherwise, it could potentially optimize it away.
+      // set animation-name to none. Otherwise, it could potentially optimize it away.
       cursorElement.style.setProperty("animation-name", "none");
       cursorElement.offsetWidth;
       cursorElement.style.setProperty("animation-name", "blink");
@@ -837,11 +837,17 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       return currentModifiers;
     }
 
-    function PDC_getclipboard_async() {
-      return navigator.clipboard.readText().then(
-        (text) => { cachedClipboardText = text; return text; },
+    function PDC_getclipboard() {
+      return cachedClipboardText;
+    }
+
+    async function PDC_getclipboard_async(heap, flag) {
+      await navigator.clipboard.readText().then(
+        (text) => { cachedClipboardText = text; return cachedClipboardText; },
         () => cachedClipboardText
       );
+      Atomics.store(heap, flag >>> 2, 1);  // Signal that the clipboard text has been updated
+      Atomics.notify(heap, flag >>> 2);
     }
 
     function PDC_mouse_set(enable, wait) {
@@ -868,12 +874,12 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       }
     }
 
-    function PDC_setclipboard_async(text) {
+    async function PDC_setclipboard_async(text, heap, flag) {
       cachedClipboardText = text;
-      return navigator.clipboard.writeText(text).then(
-        () => 0,    // PDC_CLIP_SUCCESS
-        () => 0     // store locally succeeded even if OS clipboard failed
-      );
+      await navigator.clipboard.writeText(text);
+      console.log(text);
+      Atomics.store(heap, flag >>> 2, 1);  // Signal that the clipboard text has been updated
+      Atomics.notify(heap, flag >>> 2);
     }
 
     function pixelToCell(clientX, clientY) {
@@ -913,6 +919,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       PDC_get_key,
       PDC_get_modifiers,
       PDC_get_rows,
+      PDC_getclipboard,
       PDC_getclipboard_async,
       PDC_gotoyx,
       inputBuffer_length,
