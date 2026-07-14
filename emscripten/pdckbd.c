@@ -5,33 +5,27 @@
 #include <emscripten/threading.h>
 #include <stdatomic.h>
 
-static _Atomic uint32_t _key_notify_counter = 0;
+static _Atomic uint32_t keyReady = 0;
 
 void PDC_kbd_init(void)
 {
   MAIN_THREAD_EM_ASM(PDCurses.set_key_notify(HEAP32, $0),
-                     (uintptr_t)&_key_notify_counter);
+                     (uintptr_t)&keyReady);
 }
 
 bool PDC_check_key(int timeout)
 {
   PDC_LOG(("PDC_check_key() - called\n"));
 
-  if (MAIN_THREAD_EM_ASM_INT(return PDCurses.inputBuffer_length()))
-    return TRUE;
+  if (keyReady) return TRUE;
 
   if (timeout == 0)
     return FALSE;
 
-  uint32_t old = atomic_load(&_key_notify_counter);
-
-  if (MAIN_THREAD_EM_ASM_INT(return PDCurses.inputBuffer_length()))
-    return TRUE;
-
-  emscripten_atomic_wait_u32((void *)&_key_notify_counter, old,
+  emscripten_atomic_wait_u32((void *)&keyReady, 0,
                              timeout < 0 ? -1.0 : (double)timeout);
 
-  return MAIN_THREAD_EM_ASM_INT(return PDCurses.inputBuffer_length()) > 0;
+  return keyReady;
 }
 
 void PDC_flushinp(void)

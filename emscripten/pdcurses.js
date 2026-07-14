@@ -271,8 +271,8 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     let cachedClipboardText = "";
 
     // Atomics-based key notification (initialised by PDC_kbd_init via set_key_notify)
-    let _keyNotifyHeap = null;
-    let _keyNotifyIdx  = 0;
+    let keyReadyHeap = null;
+    let keyReadyIdx  = 0;
     
     function createCells(colIndex, numCols, rowIndex, numRows) {
       for (let row = rowIndex; row < numRows; ++row) {
@@ -324,10 +324,10 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       observer.observe(screenElement);
     }
 
-    function _notifyKeyWaiter() {
-      if (_keyNotifyHeap) {
-        Atomics.add(_keyNotifyHeap, _keyNotifyIdx, 1);
-        Atomics.notify(_keyNotifyHeap, _keyNotifyIdx, 1);
+    function notifyKeyWaiter() {
+      if (keyReadyHeap) {
+        Atomics.store(keyReadyHeap, keyReadyIdx, 1);
+        Atomics.notify(keyReadyHeap, keyReadyIdx, 1);
       }
     }
 
@@ -368,7 +368,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
       if (KEY_MAP.has(key)) {
         inputBuffer.push(KEY_MAP.get(key));
-        _notifyKeyWaiter();
+        notifyKeyWaiter();
         console.log(inputBuffer);
       }
       else {
@@ -403,13 +403,9 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       beepSound.stop(beepContext.currentTime + 0.25);
     }
 
-    function inputBuffer_length() {
-      return inputBuffer.length;
-    }
-
     function set_key_notify(heap32, ptr) {
-      _keyNotifyHeap = heap32;
-      _keyNotifyIdx = ptr >>> 2;
+      keyReadyHeap = heap32;
+      keyReadyIdx  = ptr >>> 2;
     }
 
     function PDC_curs_set(visibility) {
@@ -421,6 +417,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     function PDC_flushinp() {
       inputBuffer.length = 0;
       mouseEventQueue.length = 0;
+      if (keyReadyHeap) Atomics.store(keyReadyHeap, keyReadyIdx, 0);
     }
 
     function PDC_get_columns() {
@@ -434,7 +431,11 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     }
 
     function PDC_get_key() {
-      return inputBuffer.shift();
+      const key = inputBuffer.shift();
+
+      if (!inputBuffer.length) Atomics.store(keyReadyHeap, keyReadyIdx, 0);
+
+      return key;
     }
 
     function PDC_get_rows() {
@@ -585,7 +586,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
         numRows = newRows;
 
         inputBuffer.unshift(KEY_RESIZE);
-        _notifyKeyWaiter();
+        notifyKeyWaiter();
         console.log(`resize numRows:${numRows} numCols:${numCols}`);
       }
     }
@@ -655,7 +656,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     function enqueueMouseEvent(evt) {
       mouseEventQueue.push(evt);
       inputBuffer.push(KEY_MOUSE);
-      _notifyKeyWaiter();
+      notifyKeyWaiter();
     }
 
     function getButtonModifiers(event) {
@@ -922,7 +923,6 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       PDC_getclipboard,
       PDC_getclipboard_async,
       PDC_gotoyx,
-      inputBuffer_length,
       PDC_mouse_set,
       PDC_scr_close,
       PDC_scr_open,
