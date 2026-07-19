@@ -283,8 +283,8 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
             const cell = document.createElement("div");
 
             cell.className = "cell";
-            cell.style.setProperty("--col", col + 1);
-            cell.style.setProperty("--row", row + 1);
+            cell.style.setProperty("--pdc-col", col + 1);
+            cell.style.setProperty("--pdc-row", row + 1);
             cell.underline = false;
             screenBuffer[row][col] = cell;
           }
@@ -450,24 +450,24 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
     function PDC_gotoyx(row, col) {
       const cell = screenBuffer[row][col];
-      const currentCol = parseInt(cursorElement.style.getPropertyValue("--col"));
-      const currentRow = parseInt(cursorElement.style.getPropertyValue("--row"));
-      const bgColor = cell.style.getPropertyValue("--bg-color");
-      const fgColor = cell.style.getPropertyValue("--fg-color");
+      const currentCol = parseInt(cursorElement.style.getPropertyValue("--pdc-col"));
+      const currentRow = parseInt(cursorElement.style.getPropertyValue("--pdc-row"));
+      const bgColor = cell.style.getPropertyValue("--pdc-bg-color");
+      const fgColor = cell.style.getPropertyValue("--pdc-fg-color");
       const textContent = cell.textContent;
       const underline = cell.underline;
 
       let classList = "cursor blink";
 
-      cursorElement.style.setProperty("--col", col + 1);
-      cursorElement.style.setProperty("--row", row + 1);
+      cursorElement.style.setProperty("--pdc-col", col + 1);
+      cursorElement.style.setProperty("--pdc-row", row + 1);
 
       cursorElement.textContent = textContent;
 
       if (underline) classList += " underline";
 
-      cursorElement.style.setProperty("--bg-color", `${(bgColor == "") ? "white" : fgColor}`);
-      cursorElement.style.setProperty("--fg-color", `${(fgColor == "") ? "black" : bgColor}`);
+      cursorElement.style.setProperty("--pdc-bg-color", `${(bgColor == "") ? "white" : fgColor}`);
+      cursorElement.style.setProperty("--pdc-fg-color", `${(fgColor == "") ? "black" : bgColor}`);
       cursorElement.className = classList;
 
       if ((currentCol != col + 1) || (currentRow != row + 1)) {
@@ -502,8 +502,8 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       screenElement.showModal();
 
       ({ cols: numCols, rows: numRows } = getGridDimensions(screenElement));
-      screenElement.style.setProperty("--cols", numCols);
-      screenElement.style.setProperty("--rows", numRows);
+      screenElement.style.setProperty("--pdc-cols", numCols);
+      screenElement.style.setProperty("--pdc-rows", numRows);
 
       console.log(`numRows:${numRows} numCols:${numCols}`);
 
@@ -563,8 +563,8 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       const { cols: newCols, rows: newRows } = getGridDimensions(screenElement);
 
       if ((newCols != numCols) || (newRows != numRows)) {
-        screenElement.style.setProperty("--cols", newCols);
-        screenElement.style.setProperty("--rows", newRows);
+        screenElement.style.setProperty("--pdc-cols", newCols);
+        screenElement.style.setProperty("--pdc-rows", newRows);
 
         if (newRows < numRows) {
           removeCells(0, newRows);
@@ -622,8 +622,8 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
         classList += " wide-char";
       }
 
-      cell.style.setProperty("--bg-color", bgColor);
-      cell.style.setProperty("--fg-color", fgColor);
+      cell.style.setProperty("--pdc-bg-color", bgColor);
+      cell.style.setProperty("--pdc-fg-color", fgColor);
 
       if (blink) classList += " blink-text";
       if (bold) classList += " bold";

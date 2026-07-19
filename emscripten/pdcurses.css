@@ -12,7 +12,7 @@
   0% {}
 
   50% {
-    --fg-color: transparent;
+    --pdc-fg-color: transparent;
   }
 }
 
@@ -29,15 +29,15 @@
 }
 
 .cell {
-  background-color: var(--bg-color);
-  color: var(--fg-color);
-  grid-column: var(--col)/span 1;
-  grid-row: var(--row)/span 1;
+  background-color: var(--pdc-bg-color);
+  color: var(--pdc-fg-color);
+  grid-column: var(--pdc-col)/span 1;
+  grid-row: var(--pdc-row)/span 1;
   height: 100%;
   overflow: visible;
   position: relative;
   width: 100%;
-  z-index: calc(-1 * (var(--row) * var(--cols) + var(--col)));
+  z-index: calc(-1 * (var(--pdc-row) * var(--pdc-cols) + var(--pdc-col)));
 
   &.box-drawing {
     overflow: hidden;
@@ -45,10 +45,10 @@
 }
 
 .cursor {
-  background-color: var(--bg-color);
-  color: var(--fg-color);
-  grid-column: var(--col)/span 1;
-  grid-row: var(--row)/span 1;
+  background-color: var(--pdc-bg-color);
+  color: var(--pdc-fg-color);
+  grid-column: var(--pdc-col)/span 1;
+  grid-row: var(--pdc-row)/span 1;
   min-width: 1ch;
   position: relative;
   width: fit-content;
@@ -65,11 +65,11 @@
   border: none;
   cursor: default;
   display: grid;
-  font-family: var(--font-family, monospace);
-  font-size: calc(var(--font-size, 16) * 1px);
+  font-family: var(--pdc-font-family, monospace);
+  font-size: calc(var(--pdc-font-size, 16) * 1px);
   gap: 0;
-  grid-auto-columns: var(--col-size, 1ch);
-  grid-auto-rows: var(--row-size, 1lh);
+  grid-auto-columns: var(--pdc-col-size, 1ch);
+  grid-auto-rows: var(--pdc-row-size, 1lh);
   height: 100dvh;
   justify-content: normal;
   left: 0;
@@ -95,22 +95,11 @@
   text-decoration: underline;
   text-decoration-skip-ink: none;
   white-space: pre;
-
-  /* &.underline::after {
-    background: linear-gradient(var(--fg-color), var(--fg-color));
-    background-size: 100% var(--line-w);
-    background-position: 0 84%;
-    background-repeat: no-repeat;
-    content: "";
-    inset: 0;
-    position: absolute;
-    z-index: -1;
-  } */
 }
 
 /* Wide (double-column) characters span two grid columns. The z-index
    ensures the wide-char cell renders above the background cell that
    PDCurses writes to the continuation column. */
 .wide-char {
-  grid-column: var(--col) / span 2;
+  grid-column: var(--pdc-col) / span 2;
 }
