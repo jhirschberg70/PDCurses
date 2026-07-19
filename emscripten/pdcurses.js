@@ -2,28 +2,28 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
   window.PDCurses ??= (() => {
     "use strict";
 
-    const CURSOR_ID                = "cursor";
-    const KEY_RESIZE               = 0x222;
-    const KEY_MOUSE                = 0x21b;
-    const PDC_BUTTON_SHIFT         = 0x0008;
-    const PDC_BUTTON_CONTROL       = 0x0010;
-    const PDC_BUTTON_ALT           = 0x0020;
-    const BUTTON_RELEASED          = 0x0000;
-    const BUTTON_PRESSED           = 0x0001;
-    const BUTTON_CLICKED           = 0x0002;
-    const BUTTON_DOUBLE_CLICKED    = 0x0003;
-    const BUTTON_MOVED             = 0x0005;
-    const PDC_MOUSE_MOVED          = 0x0008;
-    const PDC_MOUSE_WHEEL_UP       = 0x0020;
-    const PDC_MOUSE_WHEEL_DOWN     = 0x0040;
-    const PDC_MOUSE_WHEEL_LEFT     = 0x0080;
-    const PDC_MOUSE_WHEEL_RIGHT    = 0x0100;
-    const PDC_KEY_MODIFIER_SHIFT   = 1;
+    const CURSOR_ID = "cursor";
+    const CHUNK_SIZE = 63;
+    const KEY_RESIZE = 0x222;
+    const KEY_MOUSE = 0x21b;
+    const PDC_BUTTON_SHIFT = 0x0008;
+    const PDC_BUTTON_CONTROL = 0x0010;
+    const PDC_BUTTON_ALT = 0x0020;
+    const BUTTON_RELEASED = 0x0000;
+    const BUTTON_PRESSED = 0x0001;
+    const BUTTON_CLICKED = 0x0002;
+    const BUTTON_DOUBLE_CLICKED = 0x0003;
+    const BUTTON_MOVED = 0x0005;
+    const PDC_MOUSE_MOVED = 0x0008;
+    const PDC_MOUSE_WHEEL_UP = 0x0020;
+    const PDC_MOUSE_WHEEL_DOWN = 0x0040;
+    const PDC_MOUSE_WHEEL_LEFT = 0x0080;
+    const PDC_MOUSE_WHEEL_RIGHT = 0x0100;
+    const PDC_KEY_MODIFIER_SHIFT = 1;
     const PDC_KEY_MODIFIER_CONTROL = 2;
-    const PDC_KEY_MODIFIER_ALT     = 4;
-    const OK                       = 0;
-    const SCREEN_ID                = "screen";
-    const SIZEOF_CELL              = 4;
+    const PDC_KEY_MODIFIER_ALT = 4;
+    const OK = 0;
+    const SCREEN_ID = "screen";
 
     const KEY_MAP = new Map([
       ["^@", 0x00],
@@ -181,83 +181,36 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       ["End", 0x168]  // KEY_END
     ]);
 
-    const WHITESPACE = new Set([
-      0x0009,
-      0x000A,
-      0x000B,
-      0x000C,
-      0x000D,
-      0x0020,
-      0x0085,
-      0x00A0,
-      0x0020,
-      0x1680,
-      0x2000,
-      0x2002,
-      0x2002,
-      0x2001,
-      0x2003,
-      0x2003,
-      0x2002,
-      0x2000,
-      0x2002,
-      0x2003,
-      0x2001,
-      0x2003,
-      0x2004,
-      0x2005,
-      0x2006,
-      0x2009,
-      0x2007,
-      0x2008,
-      0x2009,
-      0x2002,
-      0x2008,
-      0x200A,
-      0x2028,
-      0x2029,
-      0x202F,
-      0x00A0,
-      0x2009,
-      0x205F,
-      0x3000,
-      0x180E,
-      0x200B,
-      0x200C,
-      0x200D,
-      0x2060,
-      0x200B,
-      0xFEFF
-    ]);
+    const beepContext = new AudioContext();
+    const charWidthMap = new Map();
+    const colorMap = [];
+    const inputBuffer = [];
+    const mouseEventQueue = [];   // pending mouse events for C to dequeue
+    const rowBuffer = [];
 
-    const beepContext      = new AudioContext();
-    const charWidthMap     = new Map();
-    const colorMap         = [];
-    const inputBuffer      = [];
-    const mouseEventQueue  = [];   // pending mouse events for C to dequeue
-    const screenBuffer     = [];
-
-    let charWidthCtx       = null;
-    let cursorElement      = null;;
-    let numCols            = null;
-    let numRows            = null;
-    let observer           = null;
-    let refCharWidth       = null;
-    let screenElement      = null;
-    let throttleBeep       = false;
+    let cellHeight = 0;
+    let cellWidth = 0;
+    let charWidthCtx = null;
+    let cursorElement = null;;
+    let numCols = null;
+    let numRows = null;
+    let observer = null;
+    let refCharWidth = null;
+    let screenElement = null;
+    let throttleBeep = false;
 
 
-    let mouseEnabled       = false;
-    let mouseWait          = 150;  // click timeout in ms (from mouseinterval())
+    let mouseEnabled = false;
+    let mouseWait = 150;  // click timeout in ms (from mouseinterval())
 
     // Click-detection state
-    let pendingPress       = null; // { button, col, row, timeoutId } or null
-    let pressedButtons     = 0;   // bitmask of currently held buttons (0=left, 1=mid, 2=right as bit position)
+    let pendingPress = null; // { button, col, row, timeoutId } or null
+    let pressedButtons = 0;   // bitmask of currently held buttons (0=left, 1=mid, 2=right as bit position)
 
     // Double-click detection
-    let lastClickTime   =  0;
-    let lastClickCol    = -1;
-    let lastClickRow    = -1;
+    let lastClickTime = 0;
+    let lastClickCol = -1;
+    let lastClickRow = -1;
     let lastClickButton = -1;
 
     // Move throttling
@@ -272,47 +225,153 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
     // Atomics-based key notification (initialised by PDC_kbd_init via set_key_notify)
     let keyReadyHeap = null;
-    let keyReadyIdx  = 0;
-    
-    function createCells(colIndex, numCols, rowIndex, numRows) {
-      for (let row = rowIndex; row < numRows; ++row) {
-        screenBuffer[row] = screenBuffer[row] ?? [];
+    let keyReadyIdx = 0;
 
-        for (let col = colIndex; col < numCols; ++col) {
-          if (!screenBuffer[row][col]) {
-            const cell = document.createElement("div");
+    /* Precomputed stop-position suffixes, keyed by chunk column count.
+    Built once at init and on resize — avoids recomputing percentages
+    every frame in updateFrame(). */
+    const stopSuffixBySize = {};  // chunkCols → string[]  (` 0 X.XXXX%`)
+    const defaultStopsBySize = {};  // chunkCols → string    (joined default stops)
 
-            cell.className = "cell";
-            cell.style.setProperty("--pdc-col", col + 1);
-            cell.style.setProperty("--pdc-row", row + 1);
-            cell.underline = false;
-            screenBuffer[row][col] = cell;
-          }
+    /* ── helpers ─────────────────────────────────────────────────── */
+
+    /**
+     * Precompute stop-suffix strings and default-stops for each distinct chunk width.
+     * Called once after numCols is set or changed to optimize gradient rendering.
+     */
+    function buildStopCaches() {
+      for (const k in stopSuffixBySize) delete stopSuffixBySize[k];
+      for (const k in defaultStopsBySize) delete defaultStopsBySize[k];
+
+      const numChunks = Math.ceil(numCols / CHUNK_SIZE);
+      for (let c = 0; c < numChunks; c++) {
+        const n = Math.min(CHUNK_SIZE, numCols - c * CHUNK_SIZE);
+        if (stopSuffixBySize[n]) continue;
+
+        const suffixes = new Array(n);
+        const defaults = new Array(n);
+        for (let i = 0; i < n; i++) {
+          suffixes[i] = ` 0 ${pct(i + 1, n)}`;
+          defaults[i] = "#000000" + suffixes[i];
         }
+        stopSuffixBySize[n] = suffixes;
+        defaultStopsBySize[n] = defaults.join(",");
       }
     }
 
-    function getChDimensions(parent = document.body) {
+    /**
+     * Measure the width and height of a single character cell.
+     * @param {Element} [parent=document.body] - Parent element to use for measurement.
+     * @returns {{cellHeight: number, cellWidth: number}} Cell dimensions in pixels.
+     */
+    function getCellDimensions(parent = document.body) {
       const span = document.createElement("span");
-
       span.style.setProperty("position", "fixed");
-      span.color = "transparent";
+      span.style.color = "#00000000";
       span.textContent = "0";
-
       parent.append(span);
-
-      const chHeight = parseFloat(window.getComputedStyle(parent).lineHeight);
-      const chWidth = span.getBoundingClientRect().width;
-
+      const rect = span.getBoundingClientRect();
       span.remove();
-
-      return { chHeight, chWidth };
+      return { cellHeight: rect.height, cellWidth: rect.width };
     }
 
     function getGridDimensions(element) {
-      const { chHeight, chWidth } = getChDimensions(element);
+      ({ cellHeight, cellWidth } = getCellDimensions(element));
 
-      return { cols: Math.floor(window.visualViewport.width / chWidth), rows: Math.floor(window.visualViewport.height / chHeight) };
+      return { numCols: Math.floor(window.visualViewport.width / cellWidth), numRows: Math.floor(window.visualViewport.height / cellHeight) };
+    }
+
+    /**
+     * Convert a fractional position (i/n) to a CSS percentage string.
+     * @param {number} i - Numerator (0-based position).
+     * @param {number} n - Denominator (total count).
+     * @returns {string} Percentage string formatted to 4 decimal places, e.g. "1.5873%".
+     */
+    function pct(i, n) {
+      return (i / n * 100).toFixed(4) + "%";
+    }
+
+    /**
+     * Convert a 24-bit RGB integer to a 6-digit hex color string.
+     * @param {number} color - Color as 0xRRGGBB integer.
+     * @returns {string} Color string in "#rrggbb" format.
+     */
+    function toHex(color) {
+      return "#" + (color | 0x1000000).toString(16).slice(1);
+    }
+
+    /* ── buildRow ─────────────────────────────────────────────────── */
+
+    /**
+     * Create a DOM row element with chunks spanning the given number of columns.
+     * @param {number} cols - Number of columns in the row.
+     * @returns {HTMLDivElement} Row element with pre-built chunks.
+     */
+    function buildRow(cols) {
+      const numChunks = Math.ceil(cols / CHUNK_SIZE);
+      const rowElement = document.createElement("div");
+
+      rowElement.className = "row";
+      rowElement.style.setProperty("--row", rowBuffer.length + 1);
+      rowElement.chunks = [];
+
+      for (let c = 0; c < numChunks; c++) {
+        const chunkStart = c * CHUNK_SIZE;
+        const chunkCols = Math.min(CHUNK_SIZE, cols - chunkStart);
+        const chunk = { codePoints: null, attrs: null, bg: null, fg: null, elements: [] };
+        const bg = document.createElement("div");
+        const blink = document.createElement("div");
+        const bold = document.createElement("div");
+        const italic = document.createElement("div");
+        italic.cells = new Array(chunkCols).fill(null).map(() => document.createElement("div"));
+        const text = document.createElement("div");
+        const underline = document.createElement("div");
+
+        bg.className = "bg chunk-element";
+        blink.className = "blink chunk-element";
+        bold.className = "bold chunk-element";
+        italic.className = "italic chunk-element";
+        text.className = "text chunk-element";
+        underline.className = "underline chunk-element";
+
+        chunk.elements.push(bg, bold, underline, text, blink, italic);
+
+        let zIndex = 0;
+
+        for (const layer of chunk.elements) {
+          layer.style.setProperty("--chunk-width", `${chunkCols * cellWidth}px`);
+          layer.style.setProperty("--chunk", c + 1);
+          layer.style.setProperty("--layer", zIndex++);
+        }
+
+        /* Mirror arrays — one entry per column, mirroring the active CSS stops. */
+        chunk.codePoints = new Array(chunkCols).fill(0x20);
+        chunk.bgStops = new Array(chunkCols).fill(null);
+        chunk.blinkStops = new Array(chunkCols).fill(null);
+        chunk.boldStops = new Array(chunkCols).fill(null);
+        chunk.textStops = new Array(chunkCols).fill(null);
+        chunk.underlineStops = new Array(chunkCols).fill(null);
+
+        rowElement.chunks.push(chunk);
+        rowElement.append(...chunk.elements);
+      }
+
+      return rowElement;
+    }
+
+    /* ── buildGraident ──────────────────────────────────────────── */
+
+    function buildGradient(stops) {
+      let gradient = stops.reduce((acc, color, col, stops) => {
+        if (col == stops.length - 1 || color !== stops[col + 1]) {
+          const suffix = stopSuffixBySize[stops.length][col];
+          acc += `${(color !== null) ? toHex(color) : "#0000"}${suffix},`;
+        }
+        return acc;
+      }, "");
+
+      // Remove trailing comma.
+      return gradient.slice(0, -1);
     }
 
     function initEventHandlers() {
@@ -377,7 +436,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     }
 
     function mapColor(num, r, g, b) {
-      colorMap[num] = `rgb(${r}, ${g}, ${b})`;
+      colorMap[num] = (r << 16) | (g << 8) | b;
     }
 
     function PDC_beep() {
@@ -405,7 +464,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
     function set_key_notify(heap32, ptr) {
       keyReadyHeap = heap32;
-      keyReadyIdx  = ptr >>> 2;
+      keyReadyIdx = ptr >>> 2;
     }
 
     function PDC_curs_set(visibility) {
@@ -449,30 +508,32 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     }
 
     function PDC_gotoyx(row, col) {
-      const cell = screenBuffer[row][col];
-      const currentCol = parseInt(cursorElement.style.getPropertyValue("--pdc-col"));
-      const currentRow = parseInt(cursorElement.style.getPropertyValue("--pdc-row"));
-      const bgColor = cell.style.getPropertyValue("--pdc-bg-color");
-      const fgColor = cell.style.getPropertyValue("--pdc-fg-color");
-      const textContent = cell.textContent;
-      const underline = cell.underline;
+      void row;
+      void col;
+      // const cell = screenBuffer[row][col];
+      // const currentCol = parseInt(cursorElement.style.getPropertyValue("--pdc-col"));
+      // const currentRow = parseInt(cursorElement.style.getPropertyValue("--pdc-row"));
+      // const bgColor = cell.style.getPropertyValue("--pdc-bg-color");
+      // const fgColor = cell.style.getPropertyValue("--pdc-fg-color");
+      // const textContent = cell.textContent;
+      // const underline = cell.underline;
 
-      let classList = "cursor blink";
+      // let classList = "cursor blink";
 
-      cursorElement.style.setProperty("--pdc-col", col + 1);
-      cursorElement.style.setProperty("--pdc-row", row + 1);
+      // cursorElement.style.setProperty("--pdc-col", col + 1);
+      // cursorElement.style.setProperty("--pdc-row", row + 1);
 
-      cursorElement.textContent = textContent;
+      // cursorElement.textContent = textContent;
 
-      if (underline) classList += " underline";
+      // if (underline) classList += " underline";
 
-      cursorElement.style.setProperty("--pdc-bg-color", `${(bgColor == "") ? "white" : fgColor}`);
-      cursorElement.style.setProperty("--pdc-fg-color", `${(fgColor == "") ? "black" : bgColor}`);
-      cursorElement.className = classList;
+      // cursorElement.style.setProperty("--pdc-bg-color", `${(bgColor == "") ? "white" : fgColor}`);
+      // cursorElement.style.setProperty("--pdc-fg-color", `${(fgColor == "") ? "black" : bgColor}`);
+      // cursorElement.className = classList;
 
-      if ((currentCol != col + 1) || (currentRow != row + 1)) {
-        restartCursorAnimation();
-      }
+      // if ((currentCol != col + 1) || (currentRow != row + 1)) {
+      //   restartCursorAnimation();
+      // }
     }
 
     function PDC_scr_close() {
@@ -501,31 +562,114 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
       screenElement.showModal();
 
-      ({ cols: numCols, rows: numRows } = getGridDimensions(screenElement));
-      screenElement.style.setProperty("--pdc-cols", numCols);
-      screenElement.style.setProperty("--pdc-rows", numRows);
+      ({ numCols, numRows } = getGridDimensions(screenElement));
+      buildStopCaches();
 
-      console.log(`numRows:${numRows} numCols:${numCols}`);
-
-      createCells(0, numCols, 0, numRows);
+      for (let row = 0; row < numRows; row++) {
+        const rowElement = buildRow(numCols);
+        rowBuffer.push(rowElement);
+        screenElement.append(rowElement);
+      }
 
       PDC_gotoyx(0, 0);
       screenElement.append(cursorElement);
 
       initEventHandlers();
 
+      console.log(`[C] PDC_scr_open: ${numRows} rows × ${numCols} cols ` +
+        `(cell ${cellWidth} × ${cellHeight}, ` +
+        `${Math.ceil(numCols / CHUNK_SIZE)} chunk(s)/row)`);
+
       return OK;
     }
 
-    function PDC_transform_line(heap, base, row, col, len) {
-      for (let i = 0; i < len; ++i) {
-        const offset = i * SIZEOF_CELL;
-        const ch    = heap[base + offset];
-        const fg    = heap[base + offset + 1];
-        const bg    = heap[base + offset + 2];
-        const attrs = heap[base + offset + 3];
+    /* ── updateRow ─────────────────────────────────────────────────── */
 
-        setCell(row, col + i, ch, fg, bg, attrs & 1, attrs & 2, attrs & 4, attrs & 8);
+    /**
+     * Read cells from WASM linear memory and update a range of columns in one row.
+     * Only chunks that overlap [startCol, startCol + cols) are updated.
+     * Each cell is stored as 4 × uint32: [codePoint, fg (color index), bg (color index), attrs].
+     * Attributes: bit 0 = blink, bit 1 = bold, bit 2 = italic, bit 3 = underline.
+     * @param {Uint32Array} heap - WASM linear memory as Uint32Array.
+     * @param {number} base - Base offset (in uint32 units) to the cell grid.
+     * @param {number} row - Row index to update.
+     * @param {number} startCol - Starting column index of the dirty range.
+     * @param {number} cols - Number of columns to update.
+     */
+    function PDC_transform_line(heap, base, row, startCol, cols) {
+      const endCol = startCol + cols;
+      const firstChunk = Math.floor(startCol / CHUNK_SIZE);
+      const lastChunk = Math.min(Math.floor((endCol - 1) / CHUNK_SIZE),
+        rowBuffer[row].chunks.length - 1);
+
+      for (let chunkIndex = firstChunk; chunkIndex <= lastChunk; chunkIndex++) {
+        const chunk = rowBuffer[row].chunks[chunkIndex];
+        const chunkStart = chunkIndex * CHUNK_SIZE;
+        const chunkCols = Math.min(CHUNK_SIZE, numCols - chunkStart);
+
+        /* Update only the columns in this chunk that fall within the dirty range. */
+        const ccStart = Math.max(0, startCol - chunkStart);
+        const ccEnd = Math.min(chunkCols, endCol - chunkStart);
+
+        for (let cc = ccStart; cc < ccEnd; cc++) {
+          const col = chunkStart + cc;
+          const offset = (col - startCol) * 4;
+
+          const ch = heap[base + offset];
+          const fg = colorMap[heap[base + offset + 1]];
+          const bg = colorMap[heap[base + offset + 2]];
+          const attrs = heap[base + offset + 3];
+
+          chunk.bgStops[cc] = bg;
+          chunk.codePoints[cc] = ch;
+
+          const blink = (attrs & 1) !== 0;
+          const bold = (attrs & 2) !== 0;
+          const italic = (attrs & 4) !== 0;
+          const underline = (attrs & 8) !== 0;
+
+          const italicLayer = chunk.elements[5];
+          if (italic) {
+            italicLayer.cells[cc].className = `cell ${(bold ? "bold" : "")} ${(blink ? "blink" : "")}`;
+            italicLayer.cells[cc].style.setProperty("--col", cc + 1);
+            italicLayer.cells[cc].style.setProperty("--fg", toHex(fg));
+            italicLayer.cells[cc].textContent = String.fromCodePoint(chunk.codePoints[cc]);
+
+            chunk.blinkStops[cc] = (blink) ? bg : null;
+            chunk.boldStops[cc] = null;
+            chunk.textStops[cc] = null;
+            italicLayer.append(italicLayer.cells[cc]);
+          } else {
+            italicLayer.cells[cc].remove();
+
+            if (bold) {
+              chunk.textStops[cc] = null;
+              chunk.boldStops[cc] = fg;
+            } else {
+              chunk.boldStops[cc] = null;
+              chunk.textStops[cc] = fg;
+            }
+            (blink) ? chunk.blinkStops[cc] = bg : chunk.blinkStops[cc] = null;
+          }
+
+          (underline) ? chunk.underlineStops[cc] = fg : chunk.underlineStops[cc] = null;
+        }
+
+        const bgLayer = chunk.elements[0];
+        const blinkLayer = chunk.elements[4];
+        const boldLayer = chunk.elements[1];
+        const textLayer = chunk.elements[3];
+        const text = String.fromCodePoint(...chunk.codePoints);
+        const underlineLayer = chunk.elements[2];
+
+        bgLayer.style.setProperty("--bg-stops", buildGradient(chunk.bgStops));
+        boldLayer.style.setProperty("--bg-stops", buildGradient(chunk.boldStops));
+        boldLayer.textContent = text;
+        blinkLayer.style.setProperty("--bg-stops", buildGradient(chunk.blinkStops));
+        textLayer.style.setProperty("--bg-stops", buildGradient(chunk.textStops));
+        textLayer.textContent = text;
+        underlineLayer.style.setProperty("--bg-stops", buildGradient(chunk.underlineStops));
+        underlineLayer.textContent = " ".repeat(chunkCols);
       }
     }
 
@@ -549,38 +693,24 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       return charWidth;
     }
 
-    function removeCells(colIndex, rowIndex) {
-      for (let row = rowIndex; row < numRows; ++row) {
-        for (let col = colIndex; col < numCols; ++col) {
-          if (screenBuffer[row][col]) {
-            screenBuffer[row][col].remove();
-          }
-        }
-      }
-    }
-
     function resizeHandler() {
-      const { cols: newCols, rows: newRows } = getGridDimensions(screenElement);
+      const { numCols: newCols, numRows: newRows } = getGridDimensions(screenElement);
 
       if ((newCols != numCols) || (newRows != numRows)) {
-        screenElement.style.setProperty("--pdc-cols", newCols);
-        screenElement.style.setProperty("--pdc-rows", newRows);
-
         if (newRows < numRows) {
-          removeCells(0, newRows);
+          for (const row of rowBuffer.splice(newRows)) {
+            row.remove();
+          }
         }
 
-        if (newCols < numCols) {
-          removeCells(newCols, 0);
-        }
+        // if (newCols < numCols) {
+        // }
 
-        if (newRows > numRows) {
-          createCells(0, numCols, numRows, newRows);
-        }
+        // if (newRows > numRows) {
+        // }
 
-        if (newCols > numCols) {
-          createCells(numCols, newCols, 0, newRows);
-        }
+        // if (newCols > numCols) {
+        // }
 
         numCols = newCols;
         numRows = newRows;
@@ -597,48 +727,6 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       cursorElement.style.setProperty("animation-name", "none");
       cursorElement.offsetWidth;
       cursorElement.style.setProperty("animation-name", "blink");
-    }
-
-    function setCell(row, col, codePoint, color, background, blink, bold, italic, underline) {
-      const cell = screenBuffer[row][col];
-
-      if (!cell) {
-        console.error(`error: tried to access row ${row} col ${col}`);
-        return;
-      }
-
-      cell.textContent = "";
-      cell.underline = false;
-
-      let classList = "cell"; // Clears all classes execept cell
-
-      const bgColor = colorMap[background];
-      const fgColor = colorMap[color];
-
-      const char = String.fromCodePoint(codePoint);
-      cell.textContent = char;
-
-      if (PDC_wcwidth(codePoint) > 1) {
-        classList += " wide-char";
-      }
-
-      cell.style.setProperty("--pdc-bg-color", bgColor);
-      cell.style.setProperty("--pdc-fg-color", fgColor);
-
-      if (blink) classList += " blink-text";
-      if (bold) classList += " bold";
-      if (italic) classList += " italic";
-      if (underline) { classList += " underline"; cell.underline = true; }
-      if ((codePoint >= 0x2500) && (codePoint <= 0x257F)) classList += " box-drawing";
-
-      cell.className = classList;
-
-      // Handle Foreground Visibility (Whitespace vs Visible chars)
-      if ((WHITESPACE.has(codePoint)) && (background == 0) && (!underline)) {
-        cell.remove();
-      } else if (!cell.isConnected) {
-        screenElement.append(cell);
-      }
     }
 
     function blurHandler() {
@@ -662,16 +750,16 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     function getButtonModifiers(event) {
       let flags = 0;
       if (event.shiftKey) flags |= PDC_BUTTON_SHIFT;
-      if (event.ctrlKey)  flags |= PDC_BUTTON_CONTROL;
-      if (event.altKey)   flags |= PDC_BUTTON_ALT;
+      if (event.ctrlKey) flags |= PDC_BUTTON_CONTROL;
+      if (event.altKey) flags |= PDC_BUTTON_ALT;
       return flags;
     }
 
     function keyupHandler(event) {
       currentModifiers = 0;
-      if (event.shiftKey)   currentModifiers |= PDC_KEY_MODIFIER_SHIFT;
-      if (event.ctrlKey)    currentModifiers |= PDC_KEY_MODIFIER_CONTROL;
-      if (event.altKey)     currentModifiers |= PDC_KEY_MODIFIER_ALT;
+      if (event.shiftKey) currentModifiers |= PDC_KEY_MODIFIER_SHIFT;
+      if (event.ctrlKey) currentModifiers |= PDC_KEY_MODIFIER_CONTROL;
+      if (event.altKey) currentModifiers |= PDC_KEY_MODIFIER_ALT;
     }
 
     function mousedownHandler(event) {
@@ -885,10 +973,10 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
     function pixelToCell(clientX, clientY) {
       const rect = screenElement.getBoundingClientRect();
-      const { chHeight, chWidth } = getChDimensions(screenElement);
+      // const { cellHeight, chWidth } = getCellDimensions(screenElement);
       return {
-        col: Math.max(0, Math.min(numCols - 1, Math.floor((clientX - rect.left) / chWidth))),
-        row: Math.max(0, Math.min(numRows - 1, Math.floor((clientY - rect.top) / chHeight)))
+        col: Math.max(0, Math.min(numCols - 1, Math.floor((clientX - rect.left) / cellWidth))),
+        row: Math.max(0, Math.min(numRows - 1, Math.floor((clientY - rect.top) / cellHeight)))
       };
     }
 
@@ -896,9 +984,9 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       const { col, row } = pixelToCell(event.clientX, event.clientY);
       let changes = 0;
 
-      if (event.deltaY < 0)      changes |= PDC_MOUSE_WHEEL_UP;
+      if (event.deltaY < 0) changes |= PDC_MOUSE_WHEEL_UP;
       else if (event.deltaY > 0) changes |= PDC_MOUSE_WHEEL_DOWN;
-      if (event.deltaX < 0)      changes |= PDC_MOUSE_WHEEL_LEFT;
+      if (event.deltaX < 0) changes |= PDC_MOUSE_WHEEL_LEFT;
       else if (event.deltaX > 0) changes |= PDC_MOUSE_WHEEL_RIGHT;
 
       if (changes) {
@@ -930,8 +1018,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       PDC_transform_line,
       PDC_wcwidth,
       dequeue_mouse_event,
-      set_key_notify,
-      setCell
+      set_key_notify
     }
   })();
 }

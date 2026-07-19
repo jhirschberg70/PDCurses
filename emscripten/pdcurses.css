@@ -1,18 +1,22 @@
 @keyframes blink {
-  0% {
-    opacity: 1;
-  }
+
+  0%,
+  100% {}
 
   50% {
     opacity: 0;
   }
 }
 
-@keyframes blink-text {
-  0% {}
+@keyframes blink-cell {
+
+  0%,
+  100% {
+    color: transparent;
+  }
 
   50% {
-    --pdc-fg-color: transparent;
+    color: var(--fg);
   }
 }
 
@@ -29,18 +33,66 @@
 }
 
 .cell {
-  background-color: var(--pdc-bg-color);
-  color: var(--pdc-fg-color);
-  grid-column: var(--pdc-col)/span 1;
-  grid-row: var(--pdc-row)/span 1;
+  background-color: transparent;
+  color: var(--fg);
+  grid-column: var(--col)/span 1;
   height: 100%;
   overflow: visible;
   position: relative;
   width: 100%;
-  z-index: calc(-1 * (var(--pdc-row) * var(--pdc-cols) + var(--pdc-col)));
 
-  &.box-drawing {
-    overflow: hidden;
+  &.blink {
+    animation: blink-cell 1.2s steps(1) infinite;
+  }
+}
+
+.chunk-element {
+  color: transparent;
+  grid-column: var(--chunk);
+  grid-row: 1;
+  height: 100%;
+  position: relative;
+  user-select: none;
+  white-space: pre-wrap;
+  width: var(--chunk-width);
+  z-index: var(--layer);
+
+  &.bg {
+    background-image: linear-gradient(to right, var(--bg-stops));
+  }
+
+  &.blink {
+    -webkit-background-clip: border-box;
+    animation: blink 1.2s steps(1) infinite;
+    background-clip: border-box;
+    background-image: linear-gradient(to right, var(--bg-stops));
+    pointer-events: none;
+  }
+
+  &.bold {
+    -webkit-background-clip: text;
+    background-clip: text;
+    background-image: linear-gradient(to right, var(--bg-stops));
+  }
+
+  &.italic {
+    display: grid;
+    grid-auto-columns: 1ch;
+    pointer-events: none;
+  }
+
+  &.text {
+    -webkit-background-clip: text;
+    background-clip: text;
+    background-image: linear-gradient(to right, var(--bg-stops));
+    user-select: text;
+  }
+
+  &.underline {
+    background-image: linear-gradient(to right, var(--bg-stops));
+    background-size: 100% 1px;
+    background-position: bottom;
+    background-repeat: no-repeat;
   }
 }
 
@@ -59,28 +111,30 @@
   font-style: italic;
 }
 
+.row {
+  display: grid;
+  grid-auto-columns: fit-content(100%);
+  grid-auto-flow: column;
+  grid-row: var(--row);
+  height: 1lh;
+  z-index: calc(-1 * var(--row));
+}
+
 .screen {
-  align-items: normal;
   background-color: black;
   border: none;
   cursor: default;
-  display: grid;
   font-family: var(--pdc-font-family, monospace);
-  font-size: calc(var(--pdc-font-size, 16) * 1px);
-  gap: 0;
-  grid-auto-columns: var(--pdc-col-size, 1ch);
-  grid-auto-rows: var(--pdc-row-size, 1lh);
+  font-size: var(--pdc-font-size, 1rem);
   height: 100dvh;
-  justify-content: normal;
-  left: 0;
-  line-height: 1;
+  inset: 0;
+  line-height: 1.2;
   margin: 0;
   max-height: none;
   max-width: none;
   outline: none;
   overflow: hidden;
   padding: 0;
-  top: 0;
   user-select: none;
   width: 100dvw;
 }
@@ -89,12 +143,6 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-}
-
-.underline {
-  text-decoration: underline;
-  text-decoration-skip-ink: none;
-  white-space: pre;
 }
 
 /* Wide (double-column) characters span two grid columns. The z-index
