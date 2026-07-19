@@ -17,21 +17,25 @@ SFLAGS		+= -DHAVE_VSNPRINTF -DHAVE_VSSCANF
 DEMOS =
 
 ifeq ($(DEBUG),Y)
-ifeq ($(WIDE),Y)
-	CFLAGS  = -g3 -pthread -Wall -DPDCDEBUG -DPDC_WIDE
-	LIBCURSES	= libpdcursesw_g.a
-# 	DEMOS = unicode.js
-else
 	CFLAGS  = -g3 -pthread -Wall -DPDCDEBUG
-	LIBCURSES	= libpdcurses_g.a
-endif
-else ifeq ($(WIDE), Y)
-	CFLAGS  = -O3 -pthread -Wall -DPDC_WIDE
-	LIBCURSES	= libpdcursesw.a
-# 	DEMOS = unicode.js
+	LDFLAGS = -g3 -pthread -sASSERTIONS=2 -sEXIT_RUNTIME=1 -sMODULARIZE -sPROXY_TO_PTHREAD -sPTHREAD_POOL_SIZE=2 -sSTACK_OVERFLOW_CHECK=2
+
+	ifeq ($(WIDE),Y)
+		CFLAGS += -DPDC_WIDE
+		LIBCURSES	+= libpdcursesw_g.a
+	else
+		LIBCURSES	+= libpdcurses_g.a
+	endif
 else
 	CFLAGS  = -O3 -pthread -Wall
-	LIBCURSES	= libpdcurses.a
+	LDFLAGS = -O3 -pthread -sEXIT_RUNTIME=1 -sMODULARIZE -sPROXY_TO_PTHREAD -sPTHREAD_POOL_SIZE=2
+
+	ifeq ($(WIDE),Y)
+		CFLAGS += -DPDC_WIDE
+		LIBCURSES	+= libpdcursesw.a
+	else
+		LIBCURSES	+= libpdcurses.a
+	endif
 endif
 
 ARFLAGS = rcv
@@ -40,7 +44,8 @@ BUILD		= $(CC) $(CFLAGS) -I$(PDCURSES_SRCDIR)
 PDCURSES_JS = pdcurses.js
 
 #DEMO_LDFLAGS	= $(LIBCURSES) -lidbfs.js -sASYNCIFY -sENVIRONMENT=web -sEXIT_RUNTIME=1 -sEXPORTED_FUNCTIONS="[_main, __sigwinch_handler]" -sEXPORTED_RUNTIME_METHODS="[cwrap, callMain]" -sFORCE_FILESYSTEM -sINVOKE_RUN=0 -sSINGLE_FILE=1
-DEMO_LDFLAGS		= $(LIBCURSES) -pthread -sEXPORTED_FUNCTIONS="[_malloc]" -sPROXY_TO_PTHREAD -sSINGLE_FILE=1 -sMODULARIZE -sPTHREAD_POOL_SIZE=2
+# DEMO_LDFLAGS		= $(LIBCURSES) -pthread -sEXPORTED_FUNCTIONS="[_malloc]" -sPROXY_TO_PTHREAD -sMODULARIZE -sPTHREAD_POOL_SIZE=2
+DEMO_LDFLAGS	= $(LIBCURSES) $(LDFLAGS)
 DEMOS			+= firework.js ozdemo.js rain.js stress.js test_mouse.js testcurs.js worm.js xmas.js
 
 .PHONY: all libs clean demos
