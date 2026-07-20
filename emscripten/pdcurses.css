@@ -16,7 +16,7 @@
   }
 
   50% {
-    color: var(--fg);
+    color: var(--pdc-fg-color);
   }
 }
 
@@ -34,8 +34,8 @@
 
 .cell {
   background-color: transparent;
-  color: var(--fg);
-  grid-column: var(--col)/span 1;
+  color: var(--pdc-fg-color);
+  grid-column: var(--pdc-col)/span 1;
   height: 100%;
   overflow: visible;
   position: relative;
@@ -48,31 +48,31 @@
 
 .chunk-element {
   color: transparent;
-  grid-column: var(--chunk);
+  grid-column: var(--pdc-chunk);
   grid-row: 1;
   height: 100%;
   position: relative;
   user-select: none;
   white-space: pre-wrap;
-  width: var(--chunk-width);
-  z-index: var(--layer);
+  width: var(--pdc-chunk-width);
+  z-index: var(--pdc-layer);
 
   &.bg {
-    background-image: linear-gradient(to right, var(--bg-stops));
+    background-image: linear-gradient(to right, var(--pdc-bg-stops));
   }
 
   &.blink {
     -webkit-background-clip: border-box;
     animation: blink 1.2s steps(1) infinite;
     background-clip: border-box;
-    background-image: linear-gradient(to right, var(--bg-stops));
+    background-image: linear-gradient(to right, var(--pdc-bg-stops));
     pointer-events: none;
   }
 
   &.bold {
     -webkit-background-clip: text;
     background-clip: text;
-    background-image: linear-gradient(to right, var(--bg-stops));
+    background-image: linear-gradient(to right, var(--pdc-bg-stops));
   }
 
   &.italic {
@@ -84,12 +84,12 @@
   &.text {
     -webkit-background-clip: text;
     background-clip: text;
-    background-image: linear-gradient(to right, var(--bg-stops));
+    background-image: linear-gradient(to right, var(--pdc-bg-stops));
     user-select: text;
   }
 
   &.underline {
-    background-image: linear-gradient(to right, var(--bg-stops));
+    background-image: linear-gradient(to right, var(--pdc-bg-stops));
     background-size: 100% 1px;
     background-position: bottom;
     background-repeat: no-repeat;
@@ -97,14 +97,12 @@
 }
 
 .cursor {
-  background-color: var(--pdc-bg-color);
+  background-color:var(--pdc-bg-color);
   color: var(--pdc-fg-color);
+  font-style: var(--pdc-cursor-style, normal);
   grid-column: var(--pdc-col)/span 1;
-  grid-row: var(--pdc-row)/span 1;
   min-width: 1ch;
-  position: relative;
   width: fit-content;
-  z-index: 2;
 }
 
 .italic {
@@ -115,9 +113,9 @@
   display: grid;
   grid-auto-columns: fit-content(100%);
   grid-auto-flow: column;
-  grid-row: var(--row);
+  grid-row: var(--pdc-row);
   height: 1lh;
-  z-index: calc(-1 * var(--row));
+  z-index: calc(-1 * var(--pdc-row));
 }
 
 .screen {

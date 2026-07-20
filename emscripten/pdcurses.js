@@ -312,7 +312,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       const rowElement = document.createElement("div");
 
       rowElement.className = "row";
-      rowElement.style.setProperty("--row", rowBuffer.length + 1);
+      rowElement.style.setProperty("--pdc-row", rowBuffer.length + 1);
       rowElement.chunks = [];
 
       for (let c = 0; c < numChunks; c++) {
@@ -327,21 +327,21 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
         const text = document.createElement("div");
         const underline = document.createElement("div");
 
-        bg.className = "bg chunk-element";
-        blink.className = "blink chunk-element";
-        bold.className = "bold chunk-element";
-        italic.className = "italic chunk-element";
-        text.className = "text chunk-element";
-        underline.className = "underline chunk-element";
+        bg.className = "chunk-element bg";
+        blink.className = "chunk-element blink";
+        bold.className = "chunk-element bold";
+        italic.className = "chunk-element italic";
+        text.className = "chunk-element text";
+        underline.className = "chunk-element underline";
 
         chunk.elements.push(bg, bold, underline, text, blink, italic);
 
         let zIndex = 0;
 
         for (const layer of chunk.elements) {
-          layer.style.setProperty("--chunk-width", `${chunkCols * cellWidth}px`);
-          layer.style.setProperty("--chunk", c + 1);
-          layer.style.setProperty("--layer", zIndex++);
+          layer.style.setProperty("--pdc-chunk-width", `${chunkCols * cellWidth}px`);
+          layer.style.setProperty("--pdc-chunk", c + 1);
+          layer.style.setProperty("--pdc-layer", zIndex++);
         }
 
         /* Mirror arrays — one entry per column, mirroring the active CSS stops. */
@@ -473,6 +473,15 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       cursorElement.style.setProperty("display", display);
     }
 
+    // function PDC_doupdate() {
+    //   for (const animation of document.getAnimations()) {
+    //     // The condition prevents unnecessary timeline updates on animations that are already synced
+    //     if (animation.startTime !== 0 && (animation.animationName === "blink" || animation.animationName === "blink-cell")) {
+    //       animation.startTime = 0;
+    //     }
+    //   }
+    // }
+
     function PDC_flushinp() {
       inputBuffer.length = 0;
       mouseEventQueue.length = 0;
@@ -508,32 +517,52 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     }
 
     function PDC_gotoyx(row, col) {
-      void row;
-      void col;
-      // const cell = screenBuffer[row][col];
-      // const currentCol = parseInt(cursorElement.style.getPropertyValue("--pdc-col"));
-      // const currentRow = parseInt(cursorElement.style.getPropertyValue("--pdc-row"));
-      // const bgColor = cell.style.getPropertyValue("--pdc-bg-color");
-      // const fgColor = cell.style.getPropertyValue("--pdc-fg-color");
-      // const textContent = cell.textContent;
-      // const underline = cell.underline;
+      const currentCol = cursorElement.col;
+      const currentRow = cursorElement.row;
+      const chunk = rowBuffer[row].chunks[Math.floor(col / CHUNK_SIZE)];
+      const textContent = String.fromCodePoint(chunk.codePoints[col % CHUNK_SIZE]);
+      const italicLayer = chunk.elements[5];
+      const isItalic = italicLayer.cells[col % CHUNK_SIZE].isConnected;
 
-      // let classList = "cursor blink";
+      let bgColor;
+      let fgColor = null;
+      let classList = "cursor blink";
+      
+      if (isItalic) {
+        const cell = italicLayer.cells[col % CHUNK_SIZE];
+        bgColor = cell.style.getPropertyValue("--pdc-bg-color");
+        fgColor = cell.style.getPropertyValue("--pdc-fg-color"); 
+        classList += " italic";
+        if (cell.classList.contains("bold")) classList += " bold";
+        if (chunk.underlineStops[col % CHUNK_SIZE]) classList += " underline";
+      } else {
+        bgColor = (chunk.bgStops[col % CHUNK_SIZE]);
+        if (chunk.boldStops[col % CHUNK_SIZE]) {
+          classList += " bold";
+          fgColor = chunk.boldStops[col % CHUNK_SIZE];
+        }
+        if (chunk.textStops[col % CHUNK_SIZE]) {
+          fgColor = chunk.textStops[col % CHUNK_SIZE];
+        }
+        if (chunk.underlineStops[col % CHUNK_SIZE]) {
+          classList += " underline";
+        }
+      }
+      cursorElement.style.setProperty("--pdc-cursor-style", `${isItalic ? "italic" : "normal"}`);
+      cursorElement.style.setProperty("--pdc-col", (col + 1) % CHUNK_SIZE);
+      cursorElement.textContent = textContent;
+      cursorElement.style.setProperty("--pdc-bg-color", `${(bgColor === "") || (bgColor === null) ? "white" : toHex(fgColor)}`);
+      cursorElement.style.setProperty("--pdc-fg-color", `${(fgColor === "") || (fgColor === null) ? "black" : toHex(bgColor)}`);
+      cursorElement.className = classList;
 
-      // cursorElement.style.setProperty("--pdc-col", col + 1);
-      // cursorElement.style.setProperty("--pdc-row", row + 1);
+      if ((currentCol != col + 1) || (currentRow != row + 1)) {
+        cursorElement.remove();
+        italicLayer.append(cursorElement);
+        restartCursorAnimation();
+      }
 
-      // cursorElement.textContent = textContent;
-
-      // if (underline) classList += " underline";
-
-      // cursorElement.style.setProperty("--pdc-bg-color", `${(bgColor == "") ? "white" : fgColor}`);
-      // cursorElement.style.setProperty("--pdc-fg-color", `${(fgColor == "") ? "black" : bgColor}`);
-      // cursorElement.className = classList;
-
-      // if ((currentCol != col + 1) || (currentRow != row + 1)) {
-      //   restartCursorAnimation();
-      // }
+      cursorElement.col = col + 1;
+      cursorElement.row = row + 1;
     }
 
     function PDC_scr_close() {
@@ -551,8 +580,10 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
     function PDC_scr_open() {
       cursorElement = document.createElement("div");
+      cursorElement.className = "cursor blink";
+      cursorElement.col = null;
       cursorElement.id = CURSOR_ID;
-      cursorElement.classList.add("cursor");
+      cursorElement.row = null;
 
       screenElement = document.createElement("dialog");
       screenElement.classList.add("screen");
@@ -572,7 +603,6 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       }
 
       PDC_gotoyx(0, 0);
-      screenElement.append(cursorElement);
 
       initEventHandlers();
 
@@ -631,8 +661,8 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
           const italicLayer = chunk.elements[5];
           if (italic) {
             italicLayer.cells[cc].className = `cell ${(bold ? "bold" : "")} ${(blink ? "blink" : "")}`;
-            italicLayer.cells[cc].style.setProperty("--col", cc + 1);
-            italicLayer.cells[cc].style.setProperty("--fg", toHex(fg));
+            italicLayer.cells[cc].style.setProperty("--pdc-col", cc + 1);
+            italicLayer.cells[cc].style.setProperty("--pdc-fg-color", toHex(fg));
             italicLayer.cells[cc].textContent = String.fromCodePoint(chunk.codePoints[cc]);
 
             chunk.blinkStops[cc] = (blink) ? bg : null;
@@ -662,13 +692,13 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
         const text = String.fromCodePoint(...chunk.codePoints);
         const underlineLayer = chunk.elements[2];
 
-        bgLayer.style.setProperty("--bg-stops", buildGradient(chunk.bgStops));
-        boldLayer.style.setProperty("--bg-stops", buildGradient(chunk.boldStops));
+        bgLayer.style.setProperty("--pdc-bg-stops", buildGradient(chunk.bgStops));
+        boldLayer.style.setProperty("--pdc-bg-stops", buildGradient(chunk.boldStops));
         boldLayer.textContent = text;
-        blinkLayer.style.setProperty("--bg-stops", buildGradient(chunk.blinkStops));
-        textLayer.style.setProperty("--bg-stops", buildGradient(chunk.textStops));
+        blinkLayer.style.setProperty("--pdc-bg-stops", buildGradient(chunk.blinkStops));
+        textLayer.style.setProperty("--pdc-bg-stops", buildGradient(chunk.textStops));
         textLayer.textContent = text;
-        underlineLayer.style.setProperty("--bg-stops", buildGradient(chunk.underlineStops));
+        underlineLayer.style.setProperty("--pdc-bg-stops", buildGradient(chunk.underlineStops));
         underlineLayer.textContent = " ".repeat(chunkCols);
       }
     }
