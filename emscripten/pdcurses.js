@@ -363,7 +363,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
     function buildGradient(stops) {
       let gradient = stops.reduce((acc, color, col, stops) => {
-        if (col == stops.length - 1 || color !== stops[col + 1]) {
+        if (col === stops.length - 1 || color !== stops[col + 1]) {
           const suffix = stopSuffixBySize[stops.length][col];
           acc += `${(color !== null) ? toHex(color) : "#0000"}${suffix},`;
         }
@@ -527,11 +527,11 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       let bgColor;
       let fgColor = null;
       let classList = "cursor";
-      
+
       if (isItalic) {
         const cell = italicLayer.cells[col % CHUNK_SIZE];
         bgColor = cell.style.getPropertyValue("--pdc-bg-color");
-        fgColor = cell.style.getPropertyValue("--pdc-fg-color"); 
+        fgColor = cell.style.getPropertyValue("--pdc-fg-color");
         classList += " italic";
         if (cell.classList.contains("bold")) classList += " bold";
         if (chunk.underlineStops[col % CHUNK_SIZE]) classList += " underline";
@@ -555,7 +555,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       cursorElement.style.setProperty("--pdc-fg-color", `${(fgColor === "") || (fgColor === null) ? "black" : toHex(bgColor)}`);
       cursorElement.className = classList;
 
-      if ((currentCol != col + 1) || (currentRow != row + 1)) {
+      if ((currentCol !== col + 1) || (currentRow !== row + 1)) {
         cursorElement.remove();
         italicLayer.append(cursorElement);
         restartCursorAnimation();
@@ -627,6 +627,9 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
      * @param {number} cols - Number of columns to update.
      */
     function PDC_transform_line(heap, base, row, startCol, cols) {
+      // Drop out-of-bounds rendering caused by resize race conditions
+      if (row >= rowBuffer.length) return;
+
       const endCol = startCol + cols;
       const firstChunk = Math.floor(startCol / CHUNK_SIZE);
       const lastChunk = Math.min(Math.floor((endCol - 1) / CHUNK_SIZE),
@@ -726,21 +729,125 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     function resizeHandler() {
       const { numCols: newCols, numRows: newRows } = getGridDimensions(screenElement);
 
-      if ((newCols != numCols) || (newRows != numRows)) {
-        if (newRows < numRows) {
-          for (const row of rowBuffer.splice(newRows)) {
-            row.remove();
-          }
+      if ((newCols !== numCols) || (newRows !== numRows)) {
+        // First, add or remove rows to match the new number of rows
+        while (rowBuffer.length < newRows) {
+          const rowElement = buildRow(newCols);
+          rowBuffer.push(rowElement);
+          screenElement.append(rowElement);
+        }
+        while (rowBuffer.length > newRows) {
+          const rowElement = rowBuffer.pop();
+          rowElement.remove();
         }
 
-        // if (newCols < numCols) {
-        // }
+        // Next, add or remove chunks in each row to match the new number of columns.
+        if (newCols > numCols) {
+          for (const row of rowBuffer) {
 
-        // if (newRows > numRows) {
-        // }
+            // 1. Expand the existing last chunk FIRST so it doesn't leave an array gap
+            if (row.chunks.length > 0) {
+              const lastChunk = row.chunks[row.chunks.length - 1];
+              const targetCols = Math.min(CHUNK_SIZE, newCols - (row.chunks.length - 1) * CHUNK_SIZE);
 
-        // if (newCols > numCols) {
-        // }
+              if (lastChunk.codePoints.length < targetCols) {
+                lastChunk.elements.forEach(layer => {
+                  layer.style.setProperty("--pdc-chunk-width", `${targetCols * cellWidth}px`);
+                });
+
+                const italicLayer = lastChunk.elements[5];
+                while (italicLayer.cells.length < targetCols) {
+                  const cell = document.createElement("div");
+                  cell.className = "cell";
+                  cell.style.setProperty("--pdc-col", italicLayer.cells.length + 1);
+                  italicLayer.cells.push(cell);
+
+                  lastChunk.codePoints.push(0x20);
+                  lastChunk.bgStops.push(null);
+                  lastChunk.blinkStops.push(null);
+                  lastChunk.boldStops.push(null);
+                  lastChunk.textStops.push(null);
+                  lastChunk.underlineStops.push(null);
+                }
+              }
+            }
+
+            // 2. Add any completely new chunks needed
+            const numChunks = Math.ceil(newCols / CHUNK_SIZE);
+            while (row.chunks.length < numChunks) {
+              const chunkStart = row.chunks.length * CHUNK_SIZE;
+              const chunkCols = Math.min(CHUNK_SIZE, newCols - chunkStart);
+              const chunk = { codePoints: null, attrs: null, bg: null, fg: null, elements: [] };
+              const bg = document.createElement("div");
+              const blink = document.createElement("div");
+              const bold = document.createElement("div");
+              const italic = document.createElement("div");
+              italic.cells = new Array(chunkCols).fill(null).map(() => document.createElement("div"));
+              const text = document.createElement("div");
+              const underline = document.createElement("div");
+
+              bg.className = "chunk-element bg";
+              blink.className = "chunk-element blink";
+              bold.className = "chunk-element bold";
+              italic.className = "chunk-element italic";
+              text.className = "chunk-element text";
+              underline.className = "chunk-element underline";
+
+              chunk.elements.push(bg, bold, underline, text, blink, italic);
+
+              let zIndex = 0;
+              for (const layer of chunk.elements) {
+                layer.style.setProperty("--pdc-chunk-width", `${chunkCols * cellWidth}px`);
+                layer.style.setProperty("--pdc-chunk", row.chunks.length + 1);
+                layer.style.setProperty("--pdc-layer", zIndex++);
+              }
+
+              chunk.codePoints = new Array(chunkCols).fill(0x20);
+              chunk.bgStops = new Array(chunkCols).fill(null);
+              chunk.blinkStops = new Array(chunkCols).fill(null);
+              chunk.boldStops = new Array(chunkCols).fill(null);
+              chunk.textStops = new Array(chunkCols).fill(null);
+              chunk.underlineStops = new Array(chunkCols).fill(null);
+
+              row.chunks.push(chunk);
+              row.append(...chunk.elements);
+            }
+          }
+          numCols = newCols;
+          buildStopCaches();
+
+        } else if (newCols < numCols) {
+          for (const row of rowBuffer) {
+            const numChunks = Math.ceil(newCols / CHUNK_SIZE);
+            while (row.chunks.length > numChunks) {
+              const chunk = row.chunks.pop();
+              for (const layer of chunk.elements) {
+                layer.remove();
+              }
+            }
+
+            // Resize the last chunk in each row and truncate arrays
+            if (row.chunks.length > 0) {
+              const lastChunk = row.chunks[row.chunks.length - 1];
+              const lastChunkCols = Math.min(CHUNK_SIZE, newCols - (row.chunks.length - 1) * CHUNK_SIZE);
+              lastChunk.elements.forEach(layer => {
+                layer.style.setProperty("--pdc-chunk-width", `${lastChunkCols * cellWidth}px`);
+              });
+
+              // Truncate array lengths to prevent out-of-bounds cache lookups
+              const italicLayer = lastChunk.elements[5];
+              italicLayer.cells.length = lastChunkCols;
+              lastChunk.codePoints.length = lastChunkCols;
+              lastChunk.bgStops.length = lastChunkCols;
+              lastChunk.blinkStops.length = lastChunkCols;
+              lastChunk.boldStops.length = lastChunkCols;
+              lastChunk.textStops.length = lastChunkCols;
+              lastChunk.underlineStops.length = lastChunkCols;
+            }
+          }
+          numCols = newCols;
+          buildStopCaches();
+        }
 
         numCols = newCols;
         numRows = newRows;
