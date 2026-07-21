@@ -6,6 +6,8 @@
 void PDC_doupdate(void)
 {
     PDC_LOG(("PDC_doupdate() - called"));
+
+    MAIN_THREAD_EM_ASM(PDCurses.PDC_doupdate());
 }
 
 /* draw a cursor at (y, x) */

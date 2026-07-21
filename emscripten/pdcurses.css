@@ -20,12 +20,14 @@
   }
 }
 
-.blink {
-  animation: blink 1.2s steps(1) infinite;
-}
+@keyframes blink-cursor {
 
-.blink-text {
-  animation: blink-text 1.2s steps(1) infinite;
+  0%,
+  100% {}
+
+  50% {
+    opacity: 0;
+  }
 }
 
 .bold {
@@ -97,6 +99,7 @@
 }
 
 .cursor {
+  animation: blink-cursor 1.2s steps(1) infinite;
   background-color:var(--pdc-bg-color);
   color: var(--pdc-fg-color);
   font-style: var(--pdc-cursor-style, normal);

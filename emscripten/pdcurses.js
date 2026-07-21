@@ -473,14 +473,14 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       cursorElement.style.setProperty("display", display);
     }
 
-    // function PDC_doupdate() {
-    //   for (const animation of document.getAnimations()) {
-    //     // The condition prevents unnecessary timeline updates on animations that are already synced
-    //     if (animation.startTime !== 0 && (animation.animationName === "blink" || animation.animationName === "blink-cell")) {
-    //       animation.startTime = 0;
-    //     }
-    //   }
-    // }
+    function PDC_doupdate() {
+      // Synchronize all blinking elements (except the cursor)
+      for (const animation of document.getAnimations()) {
+        if (animation.startTime !== 0 && (animation.animationName === "blink" || animation.animationName === "blink-cell")) {
+          animation.startTime = 0;
+        }
+      }
+    }
 
     function PDC_flushinp() {
       inputBuffer.length = 0;
@@ -526,7 +526,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
       let bgColor;
       let fgColor = null;
-      let classList = "cursor blink";
+      let classList = "cursor";
       
       if (isItalic) {
         const cell = italicLayer.cells[col % CHUNK_SIZE];
@@ -580,7 +580,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
 
     function PDC_scr_open() {
       cursorElement = document.createElement("div");
-      cursorElement.className = "cursor blink";
+      cursorElement.className = "cursor";
       cursorElement.col = null;
       cursorElement.id = CURSOR_ID;
       cursorElement.row = null;
@@ -756,7 +756,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       // set animation-name to none. Otherwise, it could potentially optimize it away.
       cursorElement.style.setProperty("animation-name", "none");
       cursorElement.offsetWidth;
-      cursorElement.style.setProperty("animation-name", "blink");
+      cursorElement.style.setProperty("animation-name", "blink-cursor");
     }
 
     function blurHandler() {
@@ -1033,6 +1033,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       PDC_beep,
       PDC_clearclipboard,
       PDC_curs_set,
+      PDC_doupdate,
       PDC_flushinp,
       PDC_get_columns,
       PDC_get_key,
