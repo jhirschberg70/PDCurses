@@ -551,20 +551,20 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
         }
       }
       cursorElement.style.setProperty("--pdc-cursor-style", `${isItalic ? "italic" : "normal"}`);
-      cursorElement.style.setProperty("--pdc-col", (col + 1) % CHUNK_SIZE);
+      cursorElement.style.setProperty("--pdc-col", ((col % CHUNK_SIZE) + 1));
       cursorElement.textContent = textContent;
       cursorElement.style.setProperty("--pdc-bg-color", `${(bgColor === "") || (bgColor === null) ? "white" : toHex(fgColor)}`);
       cursorElement.style.setProperty("--pdc-fg-color", `${(fgColor === "") || (fgColor === null) ? "black" : toHex(bgColor)}`);
       cursorElement.className = classList;
 
-      if ((currentCol !== col + 1) || (currentRow !== row + 1)) {
+      if ((currentCol !== col) || (currentRow !== row)) {
         cursorElement.remove();
         italicLayer.append(cursorElement);
         restartCursorAnimation();
       }
 
-      cursorElement.col = col + 1;
-      cursorElement.row = row + 1;
+      cursorElement.col = col;
+      cursorElement.row = row;
     }
 
     function PDC_scr_close() {
