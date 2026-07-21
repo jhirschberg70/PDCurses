@@ -82,7 +82,8 @@ int PDC_resize_screen(int nlines, int ncols)
 {
     PDC_LOG(("PDC_resize_screen() - called. Lines: %d Cols: %d\n",
              nlines, ncols));
-    return OK;
+
+    return MAIN_THREAD_EM_ASM_INT(return PDCurses.PDC_resize_screen());
 }
 
 void PDC_restore_screen_mode(int i)

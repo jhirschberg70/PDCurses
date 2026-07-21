@@ -22,6 +22,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     const PDC_KEY_MODIFIER_SHIFT = 1;
     const PDC_KEY_MODIFIER_CONTROL = 2;
     const PDC_KEY_MODIFIER_ALT = 4;
+    const PDC_RESIZE_WAIT = 100;
     const OK = 0;
     const SCREEN_ID = "screen";
 
@@ -196,6 +197,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     let numRows = null;
     let observer = null;
     let refCharWidth = null;
+    let resizeTimeoutId = null;
     let screenElement = null;
     let throttleBeep = false;
 
@@ -727,135 +729,16 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     }
 
     function resizeHandler() {
-      const { numCols: newCols, numRows: newRows } = getGridDimensions(screenElement);
+      clearTimeout(resizeTimeoutId);
+      resizeTimeoutId = setTimeout(() => {
+        const { numCols: newCols, numRows: newRows } = getGridDimensions(screenElement);
 
-      if ((newCols !== numCols) || (newRows !== numRows)) {
-        // First, add or remove rows to match the new number of rows
-        while (rowBuffer.length < newRows) {
-          const rowElement = buildRow(newCols);
-          rowBuffer.push(rowElement);
-          screenElement.append(rowElement);
+        // Check if physical grid capacity actually changed
+        if (newCols !== numCols || newRows !== numRows) {
+          inputBuffer.unshift(KEY_RESIZE);
+          notifyKeyWaiter();
         }
-        while (rowBuffer.length > newRows) {
-          const rowElement = rowBuffer.pop();
-          rowElement.remove();
-        }
-
-        // Next, add or remove chunks in each row to match the new number of columns.
-        if (newCols > numCols) {
-          for (const row of rowBuffer) {
-
-            // 1. Expand the existing last chunk FIRST so it doesn't leave an array gap
-            if (row.chunks.length > 0) {
-              const lastChunk = row.chunks[row.chunks.length - 1];
-              const targetCols = Math.min(CHUNK_SIZE, newCols - (row.chunks.length - 1) * CHUNK_SIZE);
-
-              if (lastChunk.codePoints.length < targetCols) {
-                lastChunk.elements.forEach(layer => {
-                  layer.style.setProperty("--pdc-chunk-width", `${targetCols * cellWidth}px`);
-                });
-
-                const italicLayer = lastChunk.elements[5];
-                while (italicLayer.cells.length < targetCols) {
-                  const cell = document.createElement("div");
-                  cell.className = "cell";
-                  cell.style.setProperty("--pdc-col", italicLayer.cells.length + 1);
-                  italicLayer.cells.push(cell);
-
-                  lastChunk.codePoints.push(0x20);
-                  lastChunk.bgStops.push(null);
-                  lastChunk.blinkStops.push(null);
-                  lastChunk.boldStops.push(null);
-                  lastChunk.textStops.push(null);
-                  lastChunk.underlineStops.push(null);
-                }
-              }
-            }
-
-            // 2. Add any completely new chunks needed
-            const numChunks = Math.ceil(newCols / CHUNK_SIZE);
-            while (row.chunks.length < numChunks) {
-              const chunkStart = row.chunks.length * CHUNK_SIZE;
-              const chunkCols = Math.min(CHUNK_SIZE, newCols - chunkStart);
-              const chunk = { codePoints: null, attrs: null, bg: null, fg: null, elements: [] };
-              const bg = document.createElement("div");
-              const blink = document.createElement("div");
-              const bold = document.createElement("div");
-              const italic = document.createElement("div");
-              italic.cells = new Array(chunkCols).fill(null).map(() => document.createElement("div"));
-              const text = document.createElement("div");
-              const underline = document.createElement("div");
-
-              bg.className = "chunk-element bg";
-              blink.className = "chunk-element blink";
-              bold.className = "chunk-element bold";
-              italic.className = "chunk-element italic";
-              text.className = "chunk-element text";
-              underline.className = "chunk-element underline";
-
-              chunk.elements.push(bg, bold, underline, text, blink, italic);
-
-              let zIndex = 0;
-              for (const layer of chunk.elements) {
-                layer.style.setProperty("--pdc-chunk-width", `${chunkCols * cellWidth}px`);
-                layer.style.setProperty("--pdc-chunk", row.chunks.length + 1);
-                layer.style.setProperty("--pdc-layer", zIndex++);
-              }
-
-              chunk.codePoints = new Array(chunkCols).fill(0x20);
-              chunk.bgStops = new Array(chunkCols).fill(null);
-              chunk.blinkStops = new Array(chunkCols).fill(null);
-              chunk.boldStops = new Array(chunkCols).fill(null);
-              chunk.textStops = new Array(chunkCols).fill(null);
-              chunk.underlineStops = new Array(chunkCols).fill(null);
-
-              row.chunks.push(chunk);
-              row.append(...chunk.elements);
-            }
-          }
-          numCols = newCols;
-          buildStopCaches();
-
-        } else if (newCols < numCols) {
-          for (const row of rowBuffer) {
-            const numChunks = Math.ceil(newCols / CHUNK_SIZE);
-            while (row.chunks.length > numChunks) {
-              const chunk = row.chunks.pop();
-              for (const layer of chunk.elements) {
-                layer.remove();
-              }
-            }
-
-            // Resize the last chunk in each row and truncate arrays
-            if (row.chunks.length > 0) {
-              const lastChunk = row.chunks[row.chunks.length - 1];
-              const lastChunkCols = Math.min(CHUNK_SIZE, newCols - (row.chunks.length - 1) * CHUNK_SIZE);
-              lastChunk.elements.forEach(layer => {
-                layer.style.setProperty("--pdc-chunk-width", `${lastChunkCols * cellWidth}px`);
-              });
-
-              // Truncate array lengths to prevent out-of-bounds cache lookups
-              const italicLayer = lastChunk.elements[5];
-              italicLayer.cells.length = lastChunkCols;
-              lastChunk.codePoints.length = lastChunkCols;
-              lastChunk.bgStops.length = lastChunkCols;
-              lastChunk.blinkStops.length = lastChunkCols;
-              lastChunk.boldStops.length = lastChunkCols;
-              lastChunk.textStops.length = lastChunkCols;
-              lastChunk.underlineStops.length = lastChunkCols;
-            }
-          }
-          numCols = newCols;
-          buildStopCaches();
-        }
-
-        numCols = newCols;
-        numRows = newRows;
-
-        inputBuffer.unshift(KEY_RESIZE);
-        notifyKeyWaiter();
-        console.log(`resize numRows:${numRows} numCols:${numCols}`);
-      }
+      }, PDC_RESIZE_WAIT);
     }
 
     function restartCursorAnimation() {
@@ -1100,6 +983,31 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       }
     }
 
+    function PDC_resize_screen() {
+      ({ numCols, numRows } = getGridDimensions(screenElement));
+      buildStopCaches();
+
+      // Clear old DOM nodes and buffer
+      rowBuffer.length = 0;
+      screenElement.replaceChildren();
+
+      // Clean rebuild of rows & chunks
+      for (let row = 0; row < numRows; row++) {
+        const rowElement = buildRow(numCols);
+        rowBuffer.push(rowElement);
+        screenElement.append(rowElement);
+      }
+
+      // Reset cursor state onto the new DOM structure
+      PDC_gotoyx(0, 0);
+
+      console.log(`[C] PDC_resize_screen: ${numRows} rows × ${numCols} cols ` +
+        `(cell ${cellWidth} × ${cellHeight}, ` +
+        `${Math.ceil(numCols / CHUNK_SIZE)} chunk(s)/row)`);
+
+      return OK;
+    }
+
     async function PDC_setclipboard_async(text, heap, flag) {
       cachedClipboardText = text;
       await navigator.clipboard.writeText(text);
@@ -1150,6 +1058,7 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       PDC_getclipboard_async,
       PDC_gotoyx,
       PDC_mouse_set,
+      PDC_resize_screen,
       PDC_scr_close,
       PDC_scr_open,
       PDC_setclipboard_async,
