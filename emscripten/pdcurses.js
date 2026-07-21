@@ -182,13 +182,13 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       ["End", 0x168]  // KEY_END
     ]);
 
-    const beepContext = new AudioContext();
-    const charWidthMap = new Map();
     const colorMap = [];
     const inputBuffer = [];
     const mouseEventQueue = [];   // pending mouse events for C to dequeue
     const rowBuffer = [];
 
+    let beepContext = new AudioContext();
+    let charWidthMap = new Map();
     let cellHeight = 0;
     let cellWidth = 0;
     let charWidthCtx = null;
@@ -232,8 +232,8 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
     /* Precomputed stop-position suffixes, keyed by chunk column count.
     Built once at init and on resize — avoids recomputing percentages
     every frame in updateFrame(). */
-    const stopSuffixBySize = {};  // chunkCols → string[]  (` 0 X.XXXX%`)
-    const defaultStopsBySize = {};  // chunkCols → string    (joined default stops)
+    let stopSuffixBySize = {};  // chunkCols → string[]  (` 0 X.XXXX%`)
+    let defaultStopsBySize = {};  // chunkCols → string    (joined default stops)
 
     /* ── helpers ─────────────────────────────────────────────────── */
 
@@ -572,12 +572,63 @@ if ((typeof window !== "undefined") && (typeof window.document !== "undefined"))
       document.removeEventListener("keyup", keyupHandler);
       document.removeEventListener("paste", pasteHandler);
       window.removeEventListener("blur", blurHandler);
-      if (mouseEnabled) {
-        PDC_mouse_set(0, mouseWait);
-      }
-      observer.disconnect();
+      document.addEventListener("mouseup", mouseupHandler);
+      screenElement.removeEventListener("mousedown", mousedownHandler);
+      screenElement.removeEventListener("mousemove", mousemoveHandler);
+      screenElement.removeEventListener("wheel", wheelHandler, { passive: true });
+      screenElement.removeEventListener("contextmenu", contextmenuHandler);
 
-      screenElement?.remove();
+      beepContext = new AudioContext();
+      charWidthMap = new Map();
+      colorMap.length = 0;
+      inputBuffer.length = 0;
+      mouseEventQueue.length = 0;
+      rowBuffer.length = 0;
+
+      cellHeight = 0;
+      cellWidth = 0;
+      charWidthCtx = null;
+      cursorElement.remove();
+      numCols = null;
+      numRows = null;
+      observer.disconnect();
+      refCharWidth = null;
+      resizeTimeoutId = null;
+      screenElement.remove();
+      throttleBeep = false;
+
+      mouseEnabled = false;
+      mouseWait = 150;  // click timeout in ms (from mouseinterval())
+
+      // Click-detection state
+      pendingPress = null; // { button, col, row, timeoutId } or null
+      pressedButtons = 0;   // bitmask of currently held buttons (0=left, 1=mid, 2=right as bit position)
+
+      // Double-click detection
+      lastClickTime = 0;
+      lastClickCol = -1;
+      lastClickRow = -1;
+      lastClickButton = -1;
+
+      // Move throttling
+      lastMoveCol = -1;
+      lastMoveRow = -1;
+
+      // Modifier key state
+      currentModifiers = 0;   // PDC_KEY_MODIFIER_* bitmask
+
+      // Clipboard
+      cachedClipboardText = "";
+
+      // Atomics-based key notification (initialised by PDC_kbd_init via set_key_notify)
+      keyReadyHeap = null;
+      keyReadyIdx = 0;
+
+      /* Precomputed stop-position suffixes, keyed by chunk column count.
+      Built once at init and on resize — avoids recomputing percentages
+      every frame in updateFrame(). */
+      stopSuffixBySize = {};  // chunkCols → string[]  (` 0 X.XXXX%`)
+      defaultStopsBySize = {};  // chunkCols → string    (joined default stops)
     }
 
     function PDC_scr_open() {
