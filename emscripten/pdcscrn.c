@@ -122,10 +122,3 @@ int PDC_scr_open(void)
     PDC_kbd_init();
     return MAIN_THREAD_EM_ASM_INT(return PDCurses.PDC_scr_open());
 }
-
-void _sigwinch_handler(void)
-{
-    PDC_LOG(("_sigwinch_handler() - called\n"));
-    printf("resizing");
-    clearok(curscr, TRUE);
-}
